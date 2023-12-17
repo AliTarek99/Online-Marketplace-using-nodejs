@@ -1,0 +1,38 @@
+<%- include('../includes/head.ejs') %>
+    <link rel="stylesheet" href="/css/forms.css">
+    <link rel="stylesheet" href="/css/auth.css">
+</head>
+
+<body>
+   <%- include('../includes/navigation.ejs') %>
+
+    <main>
+        <form class="login-form" action="/register" method="POST">
+            <div class="form-control">
+                <div class="form-control">
+                    <label for="name">Name</label>
+                    <input type="text" name="name" id="name">
+                </div>
+                <label for="email">E-Mail</label>
+                <input type="email" name="email" id="email">
+            </div>
+            <div class="form-control">
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password">
+            </div>
+            <div class="form-control">
+                <label for="repeatPassword">Repeat Password</label>
+                <input type="password" name="repeatPassword" id="repeatPassword">
+            </div>
+            <% if(err != '') {%>
+                <%= err %>
+                <br>
+                <br>
+            <% } %>
+            Already have account? <a href="/login">login</a>
+            <br>
+            <br>
+            <button class="btn" type="submit">Register</button>
+        </form>
+    </main>
+<%- include('../includes/end.ejs') %>
