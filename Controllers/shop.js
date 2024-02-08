@@ -32,7 +32,7 @@ exports.removeFromCart = (req, res) => {
     req.session.user.removeItem(req.params.prodId).then(() => res.redirect('/cart'));
 }
 
-exports.checkout = async (req, res) => {
+exports.checkout = (req, res) => {
     let order;
     req.session.user.populate('cart.items.productId')
     .then(user => {

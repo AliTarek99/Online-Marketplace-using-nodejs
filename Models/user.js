@@ -20,7 +20,11 @@ const Users = new Schema({
             productId: {type: Schema.Types.ObjectId, ref: 'Products', required: true},
             quantity: {type: Schema.Types.Number, required: true}
         }]
-    } 
+    },
+    verified: {
+        type: Boolean,
+        required: true
+    }
 });
 
 Users.methods.removeItem = function(prodId) {

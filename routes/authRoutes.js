@@ -14,4 +14,6 @@ route.post('/register', authController.postRegister);
 
 route.use('/logout', authController.logout);
 
+route.get('/verify/:userId', authController.getVerify);
+
 module.exports = route;

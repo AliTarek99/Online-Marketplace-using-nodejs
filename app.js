@@ -75,7 +75,7 @@ app.use(shopRoutes);
 app.use(authRoutes);
 
 app.use('/', (req, res) => {
-    res.render('404', {title : "Page Not Found", path : "/404"});
+    res.render('404', {title : "Page Not Found", path : "/404", auth: false});
 });
 
 mongoose.connect(dbURL)

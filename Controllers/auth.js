@@ -38,11 +38,13 @@ exports.postRegister = (req, res) => {
             user = new User();
             user.name = req.body.name;
             user.email = req.body.email;
+            user.verified = false;
             bcrypt.hash(req.body.password, 12).then(result => {
                 user.password = result;
                 user.cart = [];
                 return user.save();
-            }).then(() => {
+            }).then(() => User.findOne({email: req.body.email}))
+            .then(user => {
                 const data = {
                     Messages: [
                         {
@@ -55,8 +57,14 @@ exports.postRegister = (req, res) => {
                                     Name: user.name
                             }],
                             Subject: "Email verification",
-                            TextPart: '',
-                            HTMLPart: ''///////////////////////////////////////////////////////////////////////
+                            TextPart: 'Click here to verify your account verify TEXT',
+                            HTMLPart: 
+                                `<body>
+                                    Click here to verify your account
+                                    <br>
+                                    <a href="http://localhost:3000/verify/${user._id}">Verify</a>
+                                </body>`
+                            
                         }
                     ]
                 };
@@ -85,4 +93,20 @@ exports.logout = (req, res) => {
             return res.redirect('/login');
         });
     }
+}
+
+exports.getVerify = (req, res) => {
+    User.findById(req.params.userId)
+    .then((user) => {
+        let msg;
+        if(user && !user.verified) {
+            user.verified = true;
+            user.save();
+            msg = "Your account has been verified.";
+        }
+        else {
+            msg = "Something went wrong.";
+        }
+        return res.render('auth/verify', {title: 'verify', path: '/verify', message: msg, auth: (req.session.user? 1: 0)});
+    })
 }
