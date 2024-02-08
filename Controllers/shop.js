@@ -3,7 +3,7 @@ const Order = require('../Models/order');
 
 exports.getHome = (req, res) => {
     Product.find().then(result => {
-        res.render('shop/product-list', {title : "Products", prods : result, path : '/', auth: (req.session.user? 1: 0)})
+        res.render('shop/product-list', {title : "Products", prods : result, path : '/', auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)})
     })
     .catch(err => console.log(err));
 }
@@ -11,7 +11,7 @@ exports.getHome = (req, res) => {
 
 exports.getAllProducts = (req, res) => {
     Product.find().then(result => {
-        res.render('shop/product-list', {title : "Products", prods : result, path : '/products', auth: (req.session.user? 1: 0)})
+        res.render('shop/product-list', {title : "Products", prods : result, path : '/products', auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)})
     })
     .catch(err => console.log(err));
 };
@@ -19,7 +19,7 @@ exports.getAllProducts = (req, res) => {
 exports.getCart = (req, res) => {
     req.session.user.populate('cart.items.productId')
     .then(user => {
-        res.render('shop/cart', {title : "Products", prods : user.cart.items, userId: req.session.user._id.toString(), path : '/cart', auth: (req.session.user? 1: 0)})
+        res.render('shop/cart', {title : "Products", prods : user.cart.items, userId: req.session.user._id.toString(), path : '/cart', auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)})
     });
 }
 
@@ -49,5 +49,5 @@ exports.checkout = (req, res) => {
 }
 
 exports.getOrders = (req, res) => {
-    Order.find({userId: req.session.user._id}).then(orders => res.render('shop/orders', {title: 'Orders', orders: orders, path: '/orders', auth: (req.session.user? 1: 0)}));
+    Order.find({userId: req.session.user._id}).then(orders => res.render('shop/orders', {title: 'Orders', orders: orders, path: '/orders', auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)}));
 }

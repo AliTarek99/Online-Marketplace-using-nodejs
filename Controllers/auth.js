@@ -7,7 +7,7 @@ const apiKey = '45dc56f3e085146993094f22023a73d5', apiSecret = '9eb2da7124957759
 exports.getLogin = (req, res) => {
     let error = req.session.error;
     req.session.error = '';
-    return res.render('auth/login', {title: 'Login', path: '/login', err: error, auth: (req.session.user? 1: 0)});
+    return res.render('auth/login', {title: 'Login', path: '/login', err: error, auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)});
 }
 
 exports.postLogin = (req, res) => {
@@ -28,7 +28,7 @@ exports.postLogin = (req, res) => {
 exports.getRegister = (req, res) => {
     let error = req.session.error;
     req.session.error = '';
-    return res.render('auth/register', {title: 'Register', path: '/register', err: error, auth: (req.session.user? 1: 0)});
+    return res.render('auth/register', {title: 'Register', path: '/register', err: error, auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)});
 }
 
 exports.postRegister = (req, res) => {
@@ -107,6 +107,6 @@ exports.getVerify = (req, res) => {
         else {
             msg = "Something went wrong.";
         }
-        return res.render('auth/verify', {title: 'verify', path: '/verify', message: msg, auth: (req.session.user? 1: 0)});
+        return res.render('auth/verify', {title: 'Verify', path: '/verify', message: msg, auth: (req.session.user? 1: 0), verified: ((user && user.verified)? 1 : 0)});
     })
 }

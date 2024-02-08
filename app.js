@@ -58,7 +58,7 @@ app.use((req, res, next) => {
     if((req.url == '/login' || req.url == '/register') && req.method == 'POST')
         return next();
     else if(req.url != '/login' && req.url != '/register') {
-        if(!req.session.user && restrictedRoutes.filter(value => value == req.url.substring(0, value.length)).length) return res.redirect('/login');
+        if((!req.session.user || !req.session.user.verified) && restrictedRoutes.filter(value => value == req.url.substring(0, value.length)).length) return res.redirect('/');
         return next();
     }
     else if((req.url == '/login' || req.url == '/register') && req.session.user) {
