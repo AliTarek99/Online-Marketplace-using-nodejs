@@ -39,6 +39,7 @@ app.use(express.static('public'));
 
 app.use((req, res, next) => {
     //let csrfToken = generateToken(req, res);
+    
     if(req.session.user) {
         User.findById(req.session.user._id)
         .then(user => {

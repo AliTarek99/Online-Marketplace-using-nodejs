@@ -1,5 +1,8 @@
 const User = require('../Models/user');
 const bcrypt = require('bcryptjs');
+const axios = require('axios');
+
+const apiKey = '45dc56f3e085146993094f22023a73d5', apiSecret = '9eb2da71249577593a3edbb7e371f13b';
 
 exports.getLogin = (req, res) => {
     let error = req.session.error;
@@ -40,6 +43,29 @@ exports.postRegister = (req, res) => {
                 user.cart = [];
                 return user.save();
             }).then(() => {
+                const data = {
+                    Messages: [
+                        {
+                            From: {
+                                Email: 'alitarek5120@gmail.com',
+                                Name: 'Market'
+                            },
+                            To:[{
+                                    Email: user.email,
+                                    Name: user.name
+                            }],
+                            Subject: "Email verification",
+                            TextPart: '',
+                            HTMLPart: ''///////////////////////////////////////////////////////////////////////
+                        }
+                    ]
+                };
+                axios.post('https://api.mailjet.com/v3.1/send', data, {
+                    auth:{
+                        username: apiKey,
+                        password: apiSecret
+                    }
+                }).then(err => console.log(err));
                 req.session.user = user;
                 return res.redirect('/');
             }).catch(err => console.log(err));
