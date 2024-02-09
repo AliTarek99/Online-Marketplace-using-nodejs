@@ -16,4 +16,12 @@ route.use('/logout', authController.logout);
 
 route.get('/verify/:userId', authController.getVerify);
 
+route.get('/reset', authController.getResetPass);
+
+route.post('/reset', authController.postResetPass);
+
+route.get('/reset/:token', authController.getNewPass);
+
+route.post('/new-password', authController.postNewPass);
+
 module.exports = route;

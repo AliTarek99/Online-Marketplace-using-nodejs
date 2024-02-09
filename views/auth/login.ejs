@@ -7,6 +7,9 @@
    <%- include('../includes/navigation.ejs') %>
 
     <main>
+        <% if (err) { %>
+            <div class="user-message user-message--error"><%= err %></div>
+        <% } %>
         <form class="login-form" action="/login" method="POST">
             <div class="form-control">
                 <label for="email">E-Mail</label>
@@ -16,12 +19,10 @@
                 <label for="password">Password</label>
                 <input type="password" name="password" id="password">
             </div>
-            <% if(err != '') {%>
-                <%= err %>
-                <br>
-                <br>
-            <% } %>
             Do not have account? <a href="/register">register</a>
+            <br>
+            <br>
+            Forgot password? <a href="/reset">Reset Password</a>
             <br>
             <br>
             <button class="btn" type="submit">Login</button>

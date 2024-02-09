@@ -5,23 +5,22 @@ exports.getAddProduct = (req, res, next) => {
 };
 
 exports.getProducts = (req, res) => {
-    Product.find().then(result => {
+    Product.find({userId: req.session.user._id}).then(result => {
         res.render('admin/products', {title : "Products", prods : result, path : '/admin/products', auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)})
     })
     .catch(err => console.log(err));
 };
 
 exports.deleteProduct = (req, res) => {
-    Product.findByIdAndRemove(req.params.prodId)
+    Product.findOneAndDelete({_id: req.params.prodId, userId: req.session.user._id})
     .then(() => res.redirect('/admin/products'))
     .catch(err => console.log(err));
-    
 }
 
 exports.getEdit = (req, res) => {
     Product.findById(req.params.prodId)
     .then(product => {
-        if(!product) return res.redirect('/admin/products');
+        if(!product || !req.session.user || product.userId != req.session.user._id) return res.redirect('/admin/products');
         res.render('admin/add-product', {title: 'Edit Product', path: '/admin/products', product: product, auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)})
     })
     .catch(err => console.log(err));
@@ -30,6 +29,7 @@ exports.getEdit = (req, res) => {
 exports.postEdit = (req, res) => {
     Product.findById(req.params.prodId)
     .then(p => {
+        if(!p || !req.session.user || p.userId != req.session.user._id) return res.redirect('/admin/products');
         p.title = req.body.title;
         p.price = req.body.price;
         p.quantity = req.body.quantity;

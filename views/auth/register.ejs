@@ -7,6 +7,9 @@
    <%- include('../includes/navigation.ejs') %>
 
     <main>
+        <% if (err) { %>
+            <div class="user-message user-message--error"><%= err %></div>
+        <% } %>
         <form class="login-form" action="/register" method="POST">
             <div class="form-control">
                 <div class="form-control">
@@ -24,11 +27,7 @@
                 <label for="repeatPassword">Repeat Password</label>
                 <input type="password" name="repeatPassword" id="repeatPassword">
             </div>
-            <% if(err != '') {%>
-                <%= err %>
-                <br>
-                <br>
-            <% } %>
+            
             Already have account? <a href="/login">login</a>
             <br>
             <br>
