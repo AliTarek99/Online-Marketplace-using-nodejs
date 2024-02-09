@@ -1,4 +1,5 @@
 const express = require('express');
+const { check } = require('express-validator')
 
 const authController = require('../Controllers/auth');
 
@@ -10,7 +11,7 @@ route.post('/login', authController.postLogin);
 
 route.get('/register', authController.getRegister);
 
-route.post('/register', authController.postRegister);
+route.post('/register', [check('email').isEmail().withMessage('Wrong email format.'), check('password').isLength({min: 8}).withMessage('Password must be at least 8 charaters')] , authController.postRegister);
 
 route.use('/logout', authController.logout);
 
@@ -22,6 +23,6 @@ route.post('/reset', authController.postResetPass);
 
 route.get('/reset/:token', authController.getNewPass);
 
-route.post('/new-password', authController.postNewPass);
+route.post('/new-password', check('password').isLength({min: 8}).withMessage('Password must be at least 8 charaters'), authController.postNewPass);
 
 module.exports = route;

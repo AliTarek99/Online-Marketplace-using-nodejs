@@ -2,6 +2,7 @@ const User = require('../Models/user');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const crypto = require('crypto');
+const { validationResult } = require('express-validator');
 
 const apiKey = '45dc56f3e085146993094f22023a73d5', apiSecret = '9eb2da71249577593a3edbb7e371f13b';
 
@@ -29,10 +30,26 @@ exports.postLogin = (req, res) => {
 exports.getRegister = (req, res) => {
     let error = req.session.error;
     req.session.error = undefined;
-    return res.render('auth/register', {title: 'Register', path: '/register', err: error, auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)});
+    return res.render('auth/register', {
+        title: 'Register', 
+        path: '/register', 
+        err: error, 
+        auth: (req.session.user? 1: 0), 
+        verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+    });
 }
 
 exports.postRegister = (req, res) => {
+    const error = validationResult(req);
+    if(!error.isEmpty()) {
+        return res.render('auth/register', {
+            title: 'Register', 
+            path: '/register', 
+            err: error.array()[0].msg, 
+            auth: (req.session.user? 1: 0), 
+            verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+        });
+    }
     User.findOne({email: req.body.email})
     .then(user => {
         if(!user && req.body.password == req.body.repeatPassword) {
@@ -148,6 +165,16 @@ exports.getNewPass = (req, res) => {
 }
 
 exports.postNewPass = (req, res) => {
+    const error = validationResult(req);
+    if(!error.isEmpty()) {
+        return res.render('auth/new-password', {
+            title: 'Reset Password', 
+            path: '/reset', 
+            error: error.array()[0].msg, 
+            auth: 0, 
+            verified: 0
+        });
+    }
     User.findOne({email: req.session.email, resetToken: req.session.token, tokenExpiry: {$gt: Date.now()}})
     .then(user => {
         if(user) {
