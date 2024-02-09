@@ -29,7 +29,7 @@
                 <textarea name="description" id="description" rows="5"><%= product._id != null ? product.description : '' %></textarea>
             </div>
 
-            <button class="btn" type="submit">Add Product</button>
+            <button class="btn" type="submit"><%= product._id == null ? "Add Product" : 'Edit Product' %></button>
         </form>
     </main>
 <%- include('../includes/end.ejs') %>
