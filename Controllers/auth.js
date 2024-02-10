@@ -9,7 +9,16 @@ const apiKey = '45dc56f3e085146993094f22023a73d5', apiSecret = '9eb2da7124957759
 exports.getLogin = (req, res) => {
     let error = req.session.error;
     req.session.error = undefined;
-    return res.render('auth/login', {title: 'Login', path: '/login', err: error, auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)});
+    return res.render('auth/login', {
+        title: 'Login', 
+        path: '/login', 
+        err: error, 
+        auth: (req.session.user? 1: 0), 
+        verified: ((req.session.user && req.session.user.verified)? 1 : 0),
+        oldData: {
+            email: ''
+        }
+    });
 }
 
 exports.postLogin = (req, res) => {
@@ -20,8 +29,16 @@ exports.postLogin = (req, res) => {
                 req.session.user = user;
                 return req.session.save(() => res.redirect('/'));
             }
-            req.session.error = 'Wrong credentials.\n';
-            return req.session.save(() => res.redirect('/login'));
+            return req.session.save(() => res.render('auth/login', {
+                title: 'Login', 
+                path: '/login', 
+                err: 'Wrong credentials.', 
+                auth: (req.session.user? 1: 0), 
+                verified: ((req.session.user && req.session.user.verified)? 1 : 0),
+                oldData: {
+                    email: req.body.email
+                }
+            }));
         });
     })
     .catch(err => console.log(err));
@@ -35,56 +52,58 @@ exports.getRegister = (req, res) => {
         path: '/register', 
         err: error, 
         auth: (req.session.user? 1: 0), 
-        verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+        verified: ((req.session.user && req.session.user.verified)? 1 : 0),
+        oldData: {
+            name: '',
+            email: ''
+        },
+        validationErrors: []
     });
 }
 
 exports.postRegister = (req, res) => {
     const error = validationResult(req);
     if(!error.isEmpty()) {
+        console.log(error.array());
         return res.render('auth/register', {
             title: 'Register', 
             path: '/register', 
-            err: error.array()[0].msg, 
+            err: error.array(), 
             auth: (req.session.user? 1: 0), 
-            verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+            verified: ((req.session.user && req.session.user.verified)? 1 : 0),
+            oldData: {
+                name: req.body.name,
+                email: req.body.email
+            },
+            validationErrors: error.array()
         });
     }
-    User.findOne({email: req.body.email})
-    .then(user => {
-        if(!user && req.body.password == req.body.repeatPassword) {
-            user = new User();
-            user.name = req.body.name;
-            user.email = req.body.email;
-            user.verified = false;
-            bcrypt.hash(req.body.password, 12).then(result => {
-                user.password = result;
-                user.cart = [];
-                return user.save();
-            }).then(() => User.findOne({email: req.body.email}))
-            .then(user => {
-                sendEmail({
-                    to: user.email,
-                    toName: user.name, 
-                    subject: "Email verification", 
-                    textPart: 'Click here to verify your account verify TEXT',
-                    htmlPart: 
-                    `<body>
-                        Click here to verify your account
-                        <br>
-                        <a href="http://localhost:3000/verify/${user._id}">Verify</a>
-                    </body>`
-                });
-                req.session.user = user;
-                return res.redirect('/');
-            }).catch(err => console.log(err));
-        }
-        else {
-            req.session.error = (user ? 'Email already exists\n': 'Passwords do not match\n');
-            return res.redirect('/register');
-        }
-    })
-    .catch(err => console.log(err));
+    if(req.body.password == req.body.repeatPassword) {
+        let user = new User();
+        user.name = req.body.name;
+        user.email = req.body.email;
+        user.verified = false;
+        bcrypt.hash(req.body.password, 12).then(result => {
+            user.password = result;
+            user.cart = [];
+            return user.save();
+        }).then(() => {
+            sendEmail({
+                to: user.email,
+                toName: user.name, 
+                subject: "Email verification", 
+                textPart: 'Click here to verify your account verify TEXT',
+                htmlPart: 
+                `<body>
+                    Click here to verify your account
+                    <br>
+                    <a href="http://localhost:3000/verify/${user._id}">Verify</a>
+                </body>`
+            });
+            req.session.user = user;
+            return req.session.save(() => res.redirect('/'));
+        }).catch(err => console.log(err));
+    }
 }
 
 exports.logout = (req, res) => {
@@ -139,15 +158,18 @@ exports.postResetPass = (req, res) => {
                             <a href="http://localhost:3000/reset/${user.resetToken}">Change password</a>
                         </body>`
                     })
-                    res.redirect('/login');
                 }).catch(err => console.log(err));
             });
         }
-        else {
-            req.session.error = 'Email does not exist';
-            req.session.save(() => res.redirect('/reset'));
-        }
     }).catch(err => console.log(err));
+    
+    res.render('auth/login', {
+        title: 'Login', 
+        path: '/login', 
+        err: 'If email address exists you will recieve an email',
+        auth: (req.session.user? 1: 0), 
+        verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+    });
 }
 
 exports.getNewPass = (req, res) => {
