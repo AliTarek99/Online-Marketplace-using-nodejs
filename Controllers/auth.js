@@ -6,7 +6,7 @@ const { validationResult } = require('express-validator');
 
 const apiKey = '45dc56f3e085146993094f22023a73d5', apiSecret = '9eb2da71249577593a3edbb7e371f13b';
 
-exports.getLogin = (req, res) => {
+exports.getLogin = (req, res, next) => {
     let error = req.session.error;
     req.session.error = undefined;
     return res.render('auth/login', {
@@ -21,7 +21,7 @@ exports.getLogin = (req, res) => {
     });
 }
 
-exports.postLogin = (req, res) => {
+exports.postLogin = (req, res, next) => {
     User.findOne({email: req.body.email})
     .then(user => {
         bcrypt.compare(req.body.password, user.password).then(result => {
@@ -41,10 +41,10 @@ exports.postLogin = (req, res) => {
             }));
         });
     })
-    .catch(err => console.log(err));
+    .catch(err => next(err));
 }
 
-exports.getRegister = (req, res) => {
+exports.getRegister = (req, res, next) => {
     let error = req.session.error;
     req.session.error = undefined;
     return res.render('auth/register', {
@@ -61,10 +61,9 @@ exports.getRegister = (req, res) => {
     });
 }
 
-exports.postRegister = (req, res) => {
+exports.postRegister = (req, res, next) => {
     const error = validationResult(req);
     if(!error.isEmpty()) {
-        console.log(error.array());
         return res.render('auth/register', {
             title: 'Register', 
             path: '/register', 
@@ -78,35 +77,34 @@ exports.postRegister = (req, res) => {
             validationErrors: error.array()
         });
     }
-    if(req.body.password == req.body.repeatPassword) {
-        let user = new User();
-        user.name = req.body.name;
-        user.email = req.body.email;
-        user.verified = false;
-        bcrypt.hash(req.body.password, 12).then(result => {
-            user.password = result;
-            user.cart = [];
-            return user.save();
-        }).then(() => {
-            sendEmail({
-                to: user.email,
-                toName: user.name, 
-                subject: "Email verification", 
-                textPart: 'Click here to verify your account verify TEXT',
-                htmlPart: 
-                `<body>
-                    Click here to verify your account
-                    <br>
-                    <a href="http://localhost:3000/verify/${user._id}">Verify</a>
-                </body>`
-            });
-            req.session.user = user;
-            return req.session.save(() => res.redirect('/'));
-        }).catch(err => console.log(err));
-    }
+
+    let user = new User();
+    user.name = req.body.name;
+    user.email = req.body.email;
+    user.verified = false;
+    bcrypt.hash(req.body.password, 12).then(result => {
+        user.password = result;
+        user.cart = [];
+        return user.save();
+    }).then(() => {
+        sendEmail({
+            to: user.email,
+            toName: user.name, 
+            subject: "Email verification", 
+            textPart: 'Click here to verify your account verify TEXT',
+            htmlPart: 
+            `<body>
+                Click here to verify your account
+                <br>
+                <a href="http://localhost:3000/verify/${user._id}">Verify</a>
+            </body>`
+        });
+        req.session.user = user;
+        return req.session.save(() => res.redirect('/'));
+    }).catch(err => next(err));
 }
 
-exports.logout = (req, res) => {
+exports.logout = (req, res, next) => {
     if(req.session) {
         req.session.destroy(err =>{
             
@@ -115,7 +113,7 @@ exports.logout = (req, res) => {
     }
 }
 
-exports.getVerify = (req, res) => {
+exports.getVerify = (req, res, next) => {
     User.findById(req.params.userId)
     .then((user) => {
         let msg;
@@ -128,16 +126,16 @@ exports.getVerify = (req, res) => {
             msg = "Something went wrong.";
         }
         res.render('auth/verify', {title: 'Verify', path: '/verify', message: msg, auth: (req.session.user? 1: 0), verified: ((user && user.verified)? 1 : 0)});
-    })
+    }).catch(err => next(err));
 }
 
-exports.getResetPass = (req, res) => {
+exports.getResetPass = (req, res, next) => {
     let err = req.session.error;
     req.session.error = undefined;
     res.render('auth/reset', {title: 'Reset Password', path: '/reset', error: err, auth: 0, verified: 0});
 }
 
-exports.postResetPass = (req, res) => {
+exports.postResetPass = (req, res, next) => {
     User.findOne({email: req.body.email})
     .then(user => {
         if(user) {
@@ -158,10 +156,10 @@ exports.postResetPass = (req, res) => {
                             <a href="http://localhost:3000/reset/${user.resetToken}">Change password</a>
                         </body>`
                     })
-                }).catch(err => console.log(err));
+                }).catch(err => next(err));
             });
         }
-    }).catch(err => console.log(err));
+    }).catch(err => next(err));
     
     res.render('auth/login', {
         title: 'Login', 
@@ -172,7 +170,7 @@ exports.postResetPass = (req, res) => {
     });
 }
 
-exports.getNewPass = (req, res) => {
+exports.getNewPass = (req, res, next) => {
     User.findOne({resetToken: req.params.token, tokenExpiry: {$gt: Date.now()}})
     .then(user => {
         if(!user) {
@@ -183,10 +181,10 @@ exports.getNewPass = (req, res) => {
         let err = req.session.error;
         req.session.error = undefined;
         req.session.save(() => res.render('auth/new-password', {title: 'Reset Password', path: '/reset', error: (err? err: ''), auth: 0, verified: 0}));  
-    });
+    }).catch(err => next(err));;
 }
 
-exports.postNewPass = (req, res) => {
+exports.postNewPass = (req, res, next) => {
     const error = validationResult(req);
     if(!error.isEmpty()) {
         return res.render('auth/new-password', {
@@ -222,8 +220,7 @@ exports.postNewPass = (req, res) => {
                     req.session.token = undefined;
                     req.session.email = undefined;
                     return req.session.save(() => res.redirect('/login'));
-                })
-                .catch(err => console.log(err));
+                }).catch(err => next(err));
             }
             else {
                 req.session.error = 'passwords does not match';
@@ -233,7 +230,7 @@ exports.postNewPass = (req, res) => {
         else {
             return res.redirect('/');
         }
-    });
+    }).catch(err => next(err));;
 }
 
 function sendEmail(email) {

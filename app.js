@@ -78,6 +78,11 @@ app.use('/', (req, res) => {
     res.render('404', {title : "Page Not Found", path : "/404", auth: false});
 });
 
+app.use((error, req, res, next) => {
+    console.log(error);
+    res.render('500', {title : "Something went wrong!", path : "/500", auth: false})
+})
+
 mongoose.connect(dbURL)
 .then(() => app.listen(3000))
 .catch(err => console.log(err));
