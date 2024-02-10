@@ -5,29 +5,29 @@ exports.getAddProduct = (req, res, next) => {
     res.render('admin/add-product', {title : "Add Product", path : '/admin/add-product', product: {id: null}, auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)});
 };
 
-exports.getProducts = (req, res) => {
+exports.getProducts = (req, res, next) => {
     Product.find({userId: req.session.user._id}).then(result => {
         res.render('admin/products', {title : "Products", prods : result, path : '/admin/products', auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)})
     })
-    .catch(err => console.log(err));
+    .catch(err => next(err));
 };
 
-exports.deleteProduct = (req, res) => {
+exports.deleteProduct = (req, res, next) => {
     Product.findOneAndDelete({_id: req.params.prodId, userId: req.session.user._id})
     .then(() => res.redirect('/admin/products'))
-    .catch(err => console.log(err));
+    .catch(err => next(err));
 }
 
-exports.getEdit = (req, res) => {
+exports.getEdit = (req, res, next) => {
     Product.findById(req.params.prodId)
     .then(product => {
         if(!product || !req.session.user || product.userId.toString() != req.session.user._id.toString()) return res.redirect('/admin/products');
         res.render('admin/add-product', {title: 'Edit Product', path: '/admin/products', product: product, auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)})
     })
-    .catch(err => console.log(err));
+    .catch(err => next(err));;
 }
 
-exports.postEdit = (req, res) => {
+exports.postEdit = (req, res, next) => {
     Product.findById(req.params.prodId)
     .then(p => {
         if(!req.session.user || (p && p.userId.toString() != req.session.user._id.toString())) return res.redirect('/admin/products');
@@ -52,5 +52,5 @@ exports.postEdit = (req, res) => {
         return p.save();
     })
     .then(() => res.redirect('/admin/products'))
-    .catch(err => console.log(err));
+    .catch(err => next(err));
 }
