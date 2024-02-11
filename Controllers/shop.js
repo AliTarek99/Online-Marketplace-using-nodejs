@@ -69,18 +69,36 @@ exports.getInvoice = (req, res, next) => {
             return res.redirect('/orders');
         }
         let invoice = new pdfDocument({font: 'Times-Italic'});
-        let invoicePath = path.join('Data', 'invoice', `invoice-${order._id}`, '.pdf');
-        invoice.pipe(fs.createWriteStream(invoicePath));
-        invoice.pipe(res);
-        
+        let invoicePath = path.join('Data', 'invoices', `invoice-${order._id}.pdf`);
+        let fileStream = fs.createWriteStream(invoicePath);
+
+        // Pipe the PDF to the file stream to save it to a file
+        invoice.pipe(fileStream);
+
+        // Set up content for the PDF
         invoice.fontSize(20).text('Invoice\n---------------------------------------');
-        invoice.fontSize(14).text('product    quantity    price');
+        invoice.fontSize(14).text('product          quantity            price');
+        let total = 0;
         order.products.forEach(p => {
-            invoice.fontSize(14).text(`${p.name}    ${p.quantity}    ${p.price}`);
+            invoice.fontSize(14).text(`${p.productId.title}         ${p.quantity}           ${p.productId.price}`, {
+                columns: 3,
+                columnGap: 15,
+                height: 100,
+                width: 465,
+                align: 'justify'
+            });
+            total += p.quantity * p.productId.price;
         });
+        invoice.fontSize(20).text('---------------------------------------');
+        invoice.fontSize(14).text(`Total: ${total}$`);
+        // Close the PDF
         invoice.end();
-        res.setHeaders('Content-Type', 'application/pdf');
-        res.setHeaders('Content-Disposition', `inline; filename="invoice-${order._id}.pdf"`);
-        res.send();
+
+        // Set Content-Disposition header to indicate inline display and provide filename
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="invoice-${order._id}.pdf"`);
+
+        // Pipe the PDF to the response stream to send it to the client
+        invoice.pipe(res);
     }).catch(err => next(err));
 }
