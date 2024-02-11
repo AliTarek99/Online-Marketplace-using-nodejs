@@ -74,19 +74,42 @@ const generateInvoice = (items, id) => {
 
     // Set up content for the PDF
     invoice.fontSize(20).text('Invoice\n---------------------------------------');
-    invoice.fontSize(14).text('product          quantity            price');
+    // invoice.fontSize(14).text('product          quantity            price');
     let total = 0;
+
+    const table = {
+        headers: ['Name', 'Quantity', 'Price'],
+        rows: [],
+        columnSpacing: 15,
+        yStart: 120,
+        cellPadding: 5,
+        fontSize: 12
+    };
+    invoice.fontSize(table.fontSize);
+
     items.forEach(item => {
-        invoice.fontSize(14).text(`${item.productId.title}         ${item.quantity}           ${item.productId.price}`, {
-            columns: 3,
-            columnGap: 15,
-            height: 100,
-            width: 465,
-            align: 'justify'
-        });
+        table.rows.push([item.productId.title, item.quantity, item.productId.price])
         total += item.quantity * item.productId.price;
     });
-    invoice.fontSize(20).text('---------------------------------------');
+
+    let currentY = table.yStart;
+
+    // Draw headers
+    table.headers.forEach((header, i) => {
+        invoice.text(header, (i + 0.4) * 150 + table.columnSpacing, currentY);
+    });
+
+    currentY += table.fontSize + table.cellPadding;
+
+    // Draw rows
+    table.rows.forEach(row => {
+        row.forEach((cell, i) => {
+            invoice.text(cell, (i + 0.4) * 150 + table.columnSpacing, currentY);
+        });
+        currentY += table.fontSize + table.cellPadding;
+    });
+
+    invoice.fontSize(20).text('---------------------------------------', 70);
     invoice.fontSize(14).text(`Total: ${total}$`);
     // Close the PDF
     invoice.end();
