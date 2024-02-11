@@ -4,6 +4,9 @@
 
     <body>
         <%- include('../includes/navigation.ejs') %>
+        <% if(err) { %>
+            <div class="user-message user-message--error">* <%= err %></div>
+        <% } %>
         <main>
             <% if (prods.length > 0) { let total = 0;%>
                 <ul class="cart__item-list">

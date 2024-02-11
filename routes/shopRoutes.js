@@ -14,7 +14,7 @@ route.post('/cart/:userId', productController.checkout);
 
 route.get('/orders', productController.getOrders);
 
-route.get('/orders/:orderId', productController.getInvoice);
+// route.get('/orders/:orderId', productController.getInvoice);
 
 route.post('/add-to-cart/:prodId', productController.addToCart);
 

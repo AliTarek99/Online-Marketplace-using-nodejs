@@ -60,10 +60,10 @@ app.use(session({
 }));
 
 app.use(express.static('public'));
-app.use('/invoices', express.static(path.join('Data', 'invoices')), (req, res, next) => {
+app.use('/Data/invoices', (req, res, next) => {
     res.setHeader('Content-Type', 'application/pdf');
     next();
-});
+}, express.static(path.join('Data', 'invoices')));
 app.use('/Data/ProductImages', (req, res, next) => {
     res.setHeader('Content-Type', 'image/png');
     next();
