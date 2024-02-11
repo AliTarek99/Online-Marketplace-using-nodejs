@@ -1,10 +1,10 @@
 const path = require('path');
+const fs = require('fs');
 
 const express = require('express');
 const bp = require('body-parser');
 const mongoose = require('mongoose');
 
-const rootDir = require('./util/path')
 const adminRoutes = require('./routes/adminRoutes');
 const shopRoutes = require('./routes/shopRoutes');
 const authRoutes = require('./routes/authRoutes');
@@ -14,6 +14,27 @@ const User = require('./Models/user');
 const session = require('express-session');
 const sessionMongo = require('connect-mongodb-session')(session);
 const csrf = require('csrf-csrf');
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, path.join('Data', 'ProductImages'));
+    },
+    filename: function (req, file, cb) {
+        cb(null, `${new Date().getTime()}-${file.originalname}`);
+    }
+});
+const upload = multer({
+    storage: storage, 
+    fileFilter: (req, file, cb) => {
+        if(file.mimetype == 'image/jpg' || file.mimetype == 'image/jpeg' || file.mimetype == 'image/png') {
+            cb(null, true);
+        }
+        else {
+            cb(null, false);
+        }
+    }
+});
 
 restrictedRoutes = ['/admin/add-product', '/cart', '/order', '/admin/admin-products', '/add-to-cart', '/remove-from-cart', '/logout', '/admin/delete-product', '/admin/edit-product'];
 
@@ -28,6 +49,9 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', 'views');
 
+app.use(upload.single('image'));
+app.use(bp.urlencoded({extended : false}));
+
 app.use(session({
     secret: 'ha4jk1245kj320dfj1$sfg', 
     resave: false, 
@@ -36,6 +60,11 @@ app.use(session({
 }));
 
 app.use(express.static('public'));
+app.use(express.static(path.join('Data', 'invoices')));
+app.use('/Data/ProductImages', (req, res, next) => {
+    res.setHeader('Content-Type', 'image/png');
+    next();
+}, express.static(path.join('Data', 'ProductImages')));
 
 app.use((req, res, next) => {
     //let csrfToken = generateToken(req, res);
@@ -69,7 +98,7 @@ app.use((req, res, next) => {
     }
 });
 
-app.use(bp.urlencoded({extended : false}));
+
 app.use('/admin', adminRoutes);
 app.use(shopRoutes);
 app.use(authRoutes);

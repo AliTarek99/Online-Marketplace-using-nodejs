@@ -1,5 +1,8 @@
 const Product = require('../Models/products');
 const Order = require('../Models/order');
+const path = require('path')
+const fs = require('fs');
+const pdfDocument = require('pdfkit');
 
 exports.getHome = (req, res, next) => {
     Product.find().then(result => {
@@ -57,4 +60,27 @@ exports.getOrders = (req, res, next) => {
         auth: (req.session.user? 1: 0), 
         verified: ((req.session.user && req.session.user.verified)? 1 : 0)
     })).catch(err => next(err));;
+}
+
+exports.getInvoice = (req, res, next) => {
+    Order.findById(req.params.orderId)
+    .then(order => {
+        if(!order) {
+            return res.redirect('/orders');
+        }
+        let invoice = new pdfDocument({font: 'Times-Italic'});
+        let invoicePath = path.join('Data', 'invoice', `invoice-${order._id}`, '.pdf');
+        invoice.pipe(fs.createWriteStream(invoicePath));
+        invoice.pipe(res);
+        
+        invoice.fontSize(20).text('Invoice\n---------------------------------------');
+        invoice.fontSize(14).text('product    quantity    price');
+        order.products.forEach(p => {
+            invoice.fontSize(14).text(`${p.name}    ${p.quantity}    ${p.price}`);
+        });
+        invoice.end();
+        res.setHeaders('Content-Type', 'application/pdf');
+        res.setHeaders('Content-Disposition', `inline; filename="invoice-${order._id}.pdf"`);
+        res.send();
+    }).catch(err => next(err));
 }

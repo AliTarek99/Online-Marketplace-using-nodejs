@@ -4,32 +4,35 @@
 </head>
 
 <body>
-   <%- include('../includes/navigation.ejs') %>
-
+    <%- include('../includes/navigation.ejs') %>
+    <% for (e of err) { %>
+        <div class="user-message user-message--error">* <%= e.msg %></div>
+    <% } %>
     <main>
-        <form class="product-form" action="/admin/add-product/<%= product._id != null ? product._id : '' %>" method="POST">
+        <form class="product-form" action="/admin/add-product/<%= product._id != null ? product._id : '' %>" method="POST" enctype="multipart/form-data">
             <div class="form-control">
                 <label for="title">Title</label>
-                <input type="text" name="title" id="title" value='<%= product._id != null ? product.title : '' %>'>
+                <input type="text" name="title" id="title" value='<%= product.title != null ? product.title : '' %>'>
             </div>
             <div class="form-control">
                 <label for="image">Image</label>
                 <input 
+                    class="<%= invalidFile ? 'invalid' : '' %>"
                     type="file" 
                     name="image" 
                     id="image" >
             </div>
             <div class="form-control">
                 <label for="price">Price</label>
-                <input type="number" name="price" id="price" step="0.01" value='<%= product._id != null ? product.price : '' %>'>
+                <input type="number" name="price" id="price" step="0.01" value='<%= product.price != null ? product.price : '' %>'>
             </div>
             <div class="form-control">
                 <label for="quantity">Quantity</label>
-                <input type="number" name="quantity" id="quantity" value='<%= product._id != null ? product.quantity : '' %>'>
+                <input type="number" name="quantity" id="quantity" value='<%= product.quantity != null ? product.quantity : '' %>'>
             </div>
             <div class="form-control">
                 <label for="description">Description</label>
-                <textarea name="description" id="description" rows="5"><%= product._id != null ? product.description : '' %></textarea>
+                <textarea name="description" id="description" rows="5"><%= product.description != null ? product.description : '' %></textarea>
             </div>
 
             <button class="btn" type="submit"><%= product._id == null ? "Add Product" : 'Edit Product' %></button>
