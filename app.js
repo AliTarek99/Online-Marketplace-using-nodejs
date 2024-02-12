@@ -61,11 +61,11 @@ app.use(session({
 }));
 
 app.use(express.static('public'));
-app.use('/Data/invoices/:invoice', (req, res, next) => {
-    console.log(req.params.invoice.split('-')[1].split('.')[0]);
-    Order.findById(new mongoose.Types.ObjectId(req.params.invoice.split('-')[1].split('.')[0]))
+app.use('/Data/invoices', (req, res, next) => {
+    console.log(req.originalUrl.split('-')[1].split('.')[0]);
+    Order.findById(new mongoose.Types.ObjectId(req.originalUrl.split('-')[1].split('.')[0]))
     .then(order => {
-        if(order.userId.toString() != req.session.user._id.toString()){
+        if(!order || order.userId.toString() != req.session.user._id.toString()){
             return res.redirect('/orders');
         }
         res.setHeader('Content-Type', 'application/pdf');
