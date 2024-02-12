@@ -1,6 +1,8 @@
 const Product = require('../Models/products');
 const { validationResult } = require('express-validator');
 const path = require('path');
+const products = require('../Models/products');
+const fs = require('fs');
 
 
 const MAX_PRODUCTS_PER_PAGE = 10;
@@ -40,8 +42,13 @@ exports.getProducts = (req, res, next) => {
 };
 
 exports.deleteProduct = (req, res, next) => {
-    Product.findOneAndDelete({_id: req.params.prodId, userId: req.session.user._id})
-    .then(() => res.redirect('/admin/products'))
+    Product.findById(req.params.prodId).then(p => {
+        fs.rm(p.imgUrl, () => {
+            Product.findOneAndDelete({_id: req.params.prodId, userId: req.session.user._id})
+            .then(() => res.redirect('/admin/products'))
+            .catch(err => next(err));
+        });
+    })
     .catch(err => next(err));
 }
 
