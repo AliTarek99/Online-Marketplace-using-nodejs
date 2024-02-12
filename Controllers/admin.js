@@ -42,11 +42,11 @@ exports.getProducts = (req, res, next) => {
 };
 
 exports.deleteProduct = (req, res, next) => {
-    Product.findById(req.params.prodId).then(p => {
-        fs.rm(p.imgUrl, () => {
+    Product.find({_id: req.params.prodId, userId: req.session.user._id}).then(p => {
+        fs.rm(p[0].imgUrl, () => {
             Product.findOneAndDelete({_id: req.params.prodId, userId: req.session.user._id})
-            .then(() => res.redirect('/admin/products'))
-            .catch(err => next(err));
+            .then(() => res.status(200).json({successful: true}))
+            .catch(err => res.status(500).json({successful: false}));
         });
     })
     .catch(err => next(err));
@@ -66,7 +66,7 @@ exports.getEdit = (req, res, next) => {
             invalidFile: false
         });
     })
-    .catch(err => next(err));;
+    .catch(err => next(err));
 }
 
 exports.postEdit = (req, res, next) => {

@@ -33,7 +33,7 @@ route.post('/add-product/:prodId',
 
 route.get('/products', adminController.getProducts);
 
-route.post('/delete-product/:prodId', adminController.deleteProduct);
+route.delete('/delete-product/:prodId', adminController.deleteProduct);
 
 route.get('/edit-product/:prodId', adminController.getEdit);
 
