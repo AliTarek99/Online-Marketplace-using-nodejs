@@ -10,6 +10,7 @@ const shopRoutes = require('./routes/shopRoutes');
 const authRoutes = require('./routes/authRoutes');
 // const mongoClient = require('./util/database');
 const Product = require('./Models/products');
+const Order = require('./Models/order');
 const User = require('./Models/user');
 const session = require('express-session');
 const sessionMongo = require('connect-mongodb-session')(session);
@@ -61,8 +62,15 @@ app.use(session({
 
 app.use(express.static('public'));
 app.use('/Data/invoices', (req, res, next) => {
-    res.setHeader('Content-Type', 'application/pdf');
-    next();
+    console.log(req.query.invoice.split('-')[1].split('.')[0]);
+    Order.findById(new mongoose.Types.ObjectId(req.query.invoice.split('-')[1].split('.')[0]))
+    .then(order => {
+        if(order.userId.toString() != req.session.user._id.toString()){
+            return res.redirect('/orders');
+        }
+        res.setHeader('Content-Type', 'application/pdf');
+        next();
+    }).catch(err => next(err))
 }, express.static(path.join('Data', 'invoices')));
 app.use('/Data/ProductImages', (req, res, next) => {
     res.setHeader('Content-Type', 'image/png');

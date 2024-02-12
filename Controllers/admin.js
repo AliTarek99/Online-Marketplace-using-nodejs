@@ -2,6 +2,9 @@ const Product = require('../Models/products');
 const { validationResult } = require('express-validator');
 const path = require('path');
 
+
+const MAX_PRODUCTS_PER_PAGE = 10;
+
 exports.getAddProduct = (req, res, next) => {
     return res.render('admin/add-product', {
         title: 'Add Product', 
@@ -15,13 +18,22 @@ exports.getAddProduct = (req, res, next) => {
 };
 
 exports.getProducts = (req, res, next) => {
-    Product.find({userId: req.session.user._id}).then(result => {
-        return res.render('admin/products', {
-            title : "Products", 
-            prods : result, 
-            path : '/admin/product', 
-            auth: (req.session.user? 1: 0), 
-            verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+    let currentPage = (+req.query.page || 1);
+    Product.find({userId: req.session.user._id}).count()
+    .then(count => {
+        Product.find({userId: req.session.user._id})
+        .skip((currentPage - 1) * MAX_PRODUCTS_PER_PAGE)
+        .limit(MAX_PRODUCTS_PER_PAGE)
+        .then(result => {
+            return res.render('admin/products', {
+                title : "Products",
+                prods : result,
+                path : '/admin/products',
+                lastPage: Math.ceil(count / MAX_PRODUCTS_PER_PAGE),
+                currentPage: currentPage,
+                auth: (req.session.user? 1: 0),
+                verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+            });
         })
     })
     .catch(err => next(err));
@@ -73,7 +85,6 @@ exports.postEdit = (req, res, next) => {
         }
         if(!p) p = new Product();
         const image = req.file;
-        console.log(image);
         p.title = req.body.title;
         p.price = req.body.price;
         p.quantity = req.body.quantity;

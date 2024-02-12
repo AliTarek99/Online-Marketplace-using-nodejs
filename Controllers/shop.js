@@ -4,17 +4,50 @@ const path = require('path')
 const fs = require('fs');
 const pdfDocument = require('pdfkit');
 
+const MAX_PRODUCTS_PER_PAGE = 10;
+const MAX_PRODUCTS_PER_HOMEPAGE = 3;
+
 exports.getHome = (req, res, next) => {
-    Product.find().then(result => {
-        res.render('shop/product-list', {title : "Products", prods : result, path : '/', auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)})
+    let currentPage = (+req.query.page || 1);
+    Product.find().count()
+    .then(count => {
+        Product.find()
+        .skip((currentPage - 1) * MAX_PRODUCTS_PER_HOMEPAGE)
+        .limit(MAX_PRODUCTS_PER_HOMEPAGE)
+        .then(result => {
+            res.render('shop/product-list', {
+                title : "Products",
+                prods : result,
+                path : '/',
+                lastPage: Math.ceil(count / MAX_PRODUCTS_PER_HOMEPAGE),
+                currentPage: currentPage,
+                auth: (req.session.user? 1: 0),
+                verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+            });
+        })
     })
     .catch(err => next(err));
 }
 
 
 exports.getAllProducts = (req, res, next) => {
-    Product.find().then(result => {
-        res.render('shop/product-list', {title : "Products", prods : result, path : '/products', auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)})
+    let currentPage = (+req.query.page || 1);
+    Product.find().count()
+    .then(count => {
+        Product.find()
+        .skip((currentPage - 1) * MAX_PRODUCTS_PER_PAGE)
+        .limit(MAX_PRODUCTS_PER_PAGE)
+        .then(result => {
+            res.render('shop/product-list', {
+                title : "Products", 
+                prods : result,
+                path : '/products', 
+                lastPage: Math.ceil(count / MAX_PRODUCTS_PER_PAGE),
+                currentPage: currentPage,
+                auth: (req.session.user? 1: 0), 
+                verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+            });
+        })
     })
     .catch(err => next(err));
 };
@@ -22,7 +55,15 @@ exports.getAllProducts = (req, res, next) => {
 exports.getCart = (req, res, next) => {
     req.session.user.populate('cart.items.productId')
     .then(user => {
-        res.render('shop/cart', {title : "Products", prods : user.cart.items, err: null, userId: req.session.user._id.toString(), path : '/cart', auth: (req.session.user? 1: 0), verified: ((req.session.user && req.session.user.verified)? 1 : 0)})
+        res.render('shop/cart', {
+            title : "Products",
+            prods : user.cart.items, 
+            err: null, 
+            userId: req.session.user._id.toString(), 
+            path : '/cart', 
+            auth: (req.session.user? 1: 0), 
+            verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+        });
     }).catch(err => next(err));
 }
 
@@ -74,7 +115,6 @@ const generateInvoice = (items, id) => {
 
     // Set up content for the PDF
     invoice.fontSize(20).text('Invoice\n---------------------------------------');
-    // invoice.fontSize(14).text('product          quantity            price');
     let total = 0;
 
     const table = {
