@@ -10,7 +10,11 @@ route.get('/', productController.getHome);
 
 route.get('/cart', productController.getCart);
 
-route.post('/cart/:userId', productController.checkout);
+route.get('/checkout', productController.getCheckout);
+
+route.get('/checkout/success', productController.checkoutSuccess);
+
+route.get('/checkout/cancel', productController.checkoutCancelled);
 
 route.get('/orders', productController.getOrders);
 

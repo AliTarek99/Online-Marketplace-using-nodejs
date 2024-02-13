@@ -165,6 +165,9 @@ exports.postResetPass = (req, res, next) => {
         title: 'Login', 
         path: '/login', 
         err: 'If email address exists you will recieve an email',
+        oldData: {
+            email: ''
+        },
         auth: (req.session.user? 1: 0), 
         verified: ((req.session.user && req.session.user.verified)? 1 : 0)
     });

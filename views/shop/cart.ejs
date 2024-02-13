@@ -23,10 +23,8 @@
                 </ul>
                 <hr>
                 <div class="centered">
-                    <form action="/cart/<%= userId %>" method="POST">
-                        <h3>Total Price: <%= total %></h3><br>
-                        <button type="submit" class="btn">Order Now!</button>
-                    </form>
+                    <h3>Total Price: $<%= total %></h3><br>
+                    <a href="/checkout" class="btn">Order Now!</a>
                 </div>
                 
             <% } else { %>
