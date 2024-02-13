@@ -10,6 +10,8 @@ route.get('/', productController.getHome);
 
 route.get('/cart', productController.getCart);
 
+route.get('/details/:productId', productController.getDetails);
+
 route.get('/checkout', productController.getCheckout);
 
 route.get('/checkout/success', productController.checkoutSuccess);

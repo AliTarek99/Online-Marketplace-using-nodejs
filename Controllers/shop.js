@@ -104,7 +104,23 @@ exports.checkoutSuccess = (req, res, next) => {
         else return res.redirect('/orders');
     }).catch(err => next(err));
 }
-                    
+
+exports.getDetails =  (req, res, next) => {
+    Product.findById(req.params.productId)
+    .then(p => {
+        if(!p) {
+            return res.redirect('/shop');
+        }
+        return res.render('shop/product-detail', {
+            title: p.title,
+            path: '/details',
+            product: p,
+            auth: (req.session.user? 1: 0), 
+            verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+        });
+    }).catch(err => next(err));
+}
+
 exports.getCheckout = (req, res, next) => {
     let p;
     req.session.user.populate('cart.items.productId')
