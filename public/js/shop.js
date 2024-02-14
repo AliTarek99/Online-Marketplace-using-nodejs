@@ -5,7 +5,7 @@ const addToCart = prodId => {
   })
   .then(data => {
     if(!data.successful) {
-        alert('Failed to added product to cart!');
+        alert('Processing previous request!');
     }
   })
   .catch(err => {

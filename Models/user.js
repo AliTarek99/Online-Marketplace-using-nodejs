@@ -27,6 +27,10 @@ const Users = new Schema({
     verified: {
         type: Boolean,
         required: true
+    },
+    isLocked: {
+        type: Boolean,
+        deafault: false
     }
 });
 

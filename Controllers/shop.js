@@ -1,4 +1,5 @@
 const Product = require('../Models/products');
+const User = require('../Models/user');
 const Order = require('../Models/order');
 const path = require('path')
 const fs = require('fs');
@@ -70,8 +71,18 @@ exports.addToCart = (req, res, next) => {
     Product.findById(req.params.prodId)
     .then(p => {
         if(p) {
-            req.session.user.addItem(p, req.session.user)
-            .then(() => res.status(200).json({successful: true}))
+            User.findOneAndUpdate({_id: req.session.user._id, isLocked: false}, {$set: {isLocked: true}}, {new: true}).then(user => {
+                if(user) {
+                    return req.session.user.addItem(p, req.session.user)
+                    .then(() => {
+                        user.isLocked = false;
+                        user.save();
+                    })
+                    .then(() => res.status(200).json({successful: true}));
+                }
+                else 
+                    res.status(500).json({successful: false});
+            })
             .catch(err => console.log(err));
         }
         else {
@@ -106,6 +117,7 @@ exports.checkoutCancelled = (req, res, next) => {
 
 exports.checkoutSuccess = (req, res, next) => {
     let order = new Order();
+    let user = req.session.user;
     let p = user.cart.items;
     if(p.length) {
         order.products = [...p];
@@ -214,8 +226,8 @@ const generateInvoice = (items, id) => {
     invoice.fontSize(table.fontSize);
 
     items.forEach(item => {
-        table.rows.push([item.productId.title, item.quantity, item.productId.price])
-        total += item.quantity * item.productId.price;
+        table.rows.push([item.product.title, item.quantity, item.product.price])
+        total += item.quantity * item.product.price;
     });
 
     let currentY = table.yStart;
