@@ -3,6 +3,7 @@ const Order = require('../Models/order');
 const path = require('path')
 const fs = require('fs');
 const pdfDocument = require('pdfkit');
+const { start } = require('repl');
 const stripe = require('stripe')('sk_test_51OjEp7ElLr217bS3xeiYK7TkxmP9aDT8zsDZstypvDlo2pfT0mGzp20p35i8ODbATY9zeKzyQaIrTwzDzvLShRbh00yGsCMH1w');
 
 const MAX_PRODUCTS_PER_PAGE = 10;
@@ -54,27 +55,46 @@ exports.getAllProducts = (req, res, next) => {
 };
 
 exports.getCart = (req, res, next) => {
-    req.session.user.populate('cart.items.productId')
-    .then(user => {
-        res.render('shop/cart', {
-            title : "Products",
-            prods : user.cart.items, 
-            err: null, 
-            userId: req.session.user._id.toString(), 
-            path : '/cart', 
-            auth: (req.session.user? 1: 0), 
-            verified: ((req.session.user && req.session.user.verified)? 1 : 0)
-        });
-    }).catch(err => next(err));
+    
+    res.render('shop/cart', {
+        title : "Cart",
+        prods : req.session.user.cart.items, 
+        err: null,
+        path : '/cart', 
+        auth: (req.session.user? 1: 0), 
+        verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+    });
 }
 
 exports.addToCart = (req, res, next) => {
-    req.session.user.addItem(req.params.prodId)
-    .then(() => res.redirect('/cart')).catch(err => next(err));
+    Product.findById(req.params.prodId)
+    .then(p => {
+        if(p) {
+            req.session.user.addItem(p, req.session.user)
+            .then(() => res.status(200).json({successful: true}))
+            .catch(err => console.log(err));
+        }
+        else {
+            return res.status(500).json({successful: false});
+        }
+    }).catch(err => next(err));
 }
 
 exports.removeFromCart = (req, res, next) => {
-    req.session.user.removeItem(req.params.prodId).then(() => res.redirect('/cart')).catch(err => next(err));
+    Product.findById(req.params.prodId)
+    .then(p => {
+        if(!p)
+            return req.session.user.removeItem({_id: req.params.prodId}, req.session.user)
+        return req.session.user.removeItem(p, req.session.user);
+    })
+    .then(p => {
+        res.status(200).json({
+            successful: true, 
+            total: +req.body.total - p.quantity * p.price, 
+            empty: p.empty
+        });
+    })
+    .catch(err => console.log(err));
 }
 
 exports.checkoutCancelled = (req, res, next) => {
@@ -85,24 +105,27 @@ exports.checkoutCancelled = (req, res, next) => {
 }
 
 exports.checkoutSuccess = (req, res, next) => {
-    let order;
-    req.session.user.populate('cart.items.productId')
-    .then(user => {
-        order = new Order();
-        let p = user.cart.items.map(value => value = {quantity: value.quantity, productId: {...value._doc.productId._doc}});
-        if(p.length) {
-            order.products = [...p];
-            order.userId = user._id;
-            order.time = new Date();
-            order.save().then(order => {
-                generateInvoice(user.cart.items, order._id.toString());
-                order.invoice = path.join('Data', 'invoices', `invoice-${order._id}.pdf`);
-                user.clearCart();
-                return order.save();
-            }).then(order => res.redirect('/orders'));
-        }
-        else return res.redirect('/orders');
-    }).catch(err => next(err));
+    let order = new Order();
+    let p = user.cart.items;
+    if(p.length) {
+        order.products = [...p];
+        order.userId = user._id;
+        order.time = new Date();
+        p.forEach(product => {
+            Product.findById(product.product._id)
+            .then(p => {
+                p.quantity -= product.quantity;
+                p.save();
+            });
+        });
+        order.save().then(order => {
+            generateInvoice(user.cart.items, order._id.toString());
+            order.invoice = path.join('Data', 'invoices', `invoice-${order._id}.pdf`);
+            user.clearCart();
+            return order.save();
+        }).then(order => res.redirect('/orders'));
+    }
+    else return res.redirect('/orders');
 }
 
 exports.getDetails =  (req, res, next) => {
@@ -122,29 +145,25 @@ exports.getDetails =  (req, res, next) => {
 }
 
 exports.getCheckout = (req, res, next) => {
-    let p;
-    req.session.user.populate('cart.items.productId')
-    .then(user => {
-        p = user.cart.items.map(value => value = {quantity: value.quantity, productId: {...value._doc.productId._doc}});
-        return stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            line_items: p.map(value => {
-                return {
-                    price_data: {
-                        currency: 'usd',
-                        unit_amount: value.productId.price * 100,
-                        product_data: {
-                            name: value.productId.title,
-                            description: value.productId.description,
-                        },
+    let p = req.session.user.cart.items;
+    stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: p.map(value => {
+            return {
+                price_data: {
+                    currency: 'usd',
+                    unit_amount: value.product.price * 100,
+                    product_data: {
+                        name: value.product.title,
+                        description: value.product.description,
                     },
-                    quantity: value.quantity,
-                }
-            }),
-            mode: 'payment',
-            success_url: `${req.protocol}://${req.get('host')}/checkout/success`,
-            cancel_url: `${req.protocol}://${req.get('host')}/checkout/cancel`
-        });
+                },
+                quantity: value.quantity,
+            }
+        }),
+        mode: 'payment',
+        success_url: `${req.protocol}://${req.get('host')}/checkout/success`,
+        cancel_url: `${req.protocol}://${req.get('host')}/checkout/cancel`
     }).then(session => {
         let err = req.session.err;
         req.session.err = undefined;

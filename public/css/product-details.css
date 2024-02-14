@@ -1,0 +1,9 @@
+p {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    max-width: 500px;
+    margin: 0 auto;
+    text-align: left;
+    margin-bottom: 20px;
+}

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { INTEGER } = require('sequelize');
 
 const Schema = mongoose.Schema
 
@@ -19,7 +20,7 @@ const Users = new Schema({
     tokenExpiry: {type: Date},
     cart: {
         items: [{
-            productId: {type: Schema.Types.ObjectId, ref: 'Products', required: true},
+            product: {type: Object, required: true},
             quantity: {type: Schema.Types.Number, required: true}
         }]
     },
@@ -29,19 +30,32 @@ const Users = new Schema({
     }
 });
 
-Users.methods.removeItem = function(prodId) {
-    this.cart.items = this.cart.items.filter(values => values.productId != prodId);
-    return this.save();
+Users.methods.removeItem = function(product) {
+    let quantity = 0, price = 0;
+    this.cart.items = this.cart.items.filter(value => {
+        if(value.product._id.toString() == product._id.toString()) {
+            quantity += value.quantity;
+            price = value.product.price;
+        }
+        return value.product._id.toString() != product._id.toString()
+    });
+    return this.save().then(() => {
+        return {
+            quantity: quantity, 
+            price: price, 
+            empty: this.cart.items.length == 0
+        }
+    });
 }
 
-Users.methods.addItem = function(prodId) {
-    let x = this.cart.items.findIndex(value => value.productId == prodId);
+Users.methods.addItem = function(product) {
+    let x = this.cart.items.findIndex(value => value.product._id.toString() == product._id.toString());
     if(x != -1) {
         this.cart.items[x].quantity++;
     }
     else 
-        this.cart.items.push({productId: prodId, quantity: 1});
-    return this.save();
+        this.cart.items.push({product: product, quantity: 1});
+    return this.save().then(function(){ this.mutex = 1; });
 }
 
 Users.methods.clearCart = function() {

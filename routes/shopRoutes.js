@@ -22,8 +22,8 @@ route.get('/orders', productController.getOrders);
 
 // route.get('/orders/:orderId', productController.getInvoice);
 
-route.post('/add-to-cart/:prodId', productController.addToCart);
+route.patch('/add-to-cart/:prodId', productController.addToCart);
 
-route.post('/remove-from-cart/:prodId', productController.removeFromCart);
+route.patch('/remove-from-cart/:prodId', productController.removeFromCart);
 
 module.exports = route;

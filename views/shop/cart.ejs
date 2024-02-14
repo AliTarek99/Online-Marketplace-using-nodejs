@@ -9,26 +9,27 @@
         <% } %>
         <main>
             <% if (prods.length > 0) { let total = 0;%>
-                <ul class="cart__item-list">
-                    <% prods.forEach(p => { %>
-                        <li class="cart__item">
-                            <h1><%= p.productId.title %></h1>
-                            <h2>Quantity: <%= p.quantity %></h2>
-                            <h2>Price: <% total += p.productId.price * p.quantity %> <%= p.productId.price * p.quantity %></h2>
-                            <form action="/remove-from-cart/<%= p.productId._id %>" method="POST">
-                                <button class="btn danger" type="submit">Delete</button>
-                            </form>
-                        </li>
-                    <% }) %>
-                </ul>
-                <hr>
-                <div class="centered">
-                    <h3>Total Price: $<%= total %></h3><br>
-                    <a href="/checkout" class="btn">Order Now!</a>
+                <div id="cart">
+                    <ul class="cart__item-list">
+                        <% prods.forEach(p => { %>
+                            <li class="cart__item">
+                                <h1><%= p.product.title %></h1>
+                                <h2>Quantity: <%= p.quantity %></h2>
+                                <h2>Price: <% total += p.product.price * p.quantity %> <%= p.product.price * p.quantity %></h2>
+                                <button class="btn danger" type="button" onclick="removeFromCart(this, '<%= p.product._id %>')">Delete</button>
+                            </li>
+                        <% }) %>
+                    </ul>
+                    <hr>
+                    <div class="centered">
+                        <h3>Total Price: $<h3 id="total"><%= total %></h3></h3><br>
+                        <a href="/checkout" class="btn">Order Now!</a>
+                    </div>
                 </div>
-                
+                <h1 id="empty" hidden>No Products in Cart!</h1>
             <% } else { %>
-                <h1>No Products in Cart!</h1>
+                <h1 id="empty">No Products in Cart!</h1>
             <% } %>
         </main>
         <%- include('../includes/end.ejs') %>
+        <script src="/js/shop.js"></script>
