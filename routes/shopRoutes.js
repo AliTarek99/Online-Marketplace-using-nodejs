@@ -1,29 +1,31 @@
 const express = require('express');
 
-const productController = require('../Controllers/shop');
+const shopController = require('../Controllers/shop');
 
 const route = express.Router();
 
-route.get('/products', productController.getAllProducts);
+route.get('/products', shopController.getAllProducts);
 
-route.get('/', productController.getHome);
+route.get('/', shopController.getHome);
 
-route.get('/cart', productController.getCart);
+route.get('/cart', shopController.getCart);
 
-route.get('/details/:productId', productController.getDetails);
+route.get('/details/:productId', shopController.getDetails);
 
-route.get('/checkout', productController.getCheckout);
+route.get('/checkout', shopController.getCheckout);
 
-route.get('/checkout/success', productController.checkoutSuccess);
+route.get('/checkout/success', shopController.checkoutSuccess);
 
-route.get('/checkout/cancel', productController.checkoutCancelled);
+route.get('/checkout/cancel', shopController.checkoutCancelled);
 
-route.get('/orders', productController.getOrders);
+route.get('/orders', shopController.getOrders);
 
 // route.get('/orders/:orderId', productController.getInvoice);
 
-route.patch('/add-to-cart/:prodId', productController.addToCart);
+route.post('/webhook', express.raw({type: 'application/json'}), shopController.stripeWebHooks);
 
-route.patch('/remove-from-cart/:prodId', productController.removeFromCart);
+route.patch('/add-to-cart/:prodId', shopController.addToCart);
+
+route.patch('/remove-from-cart/:prodId', shopController.removeFromCart);
 
 module.exports = route;

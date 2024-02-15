@@ -18,13 +18,21 @@
                                     </h1>
                                 </header>
                                 <div class="card__content">
-                                    <h2 class="product__price">$
-                                        <%= product.price %>
-                                    </h2>
+                                    <% if(product.quantity) { %>
+                                        <h2 class="product__price">$
+                                            <%= product.price %>
+                                        </h2>
+                                    <% } else { %>
+                                        <h2 class="out-of-stock">
+                                            Out of stock
+                                        </h2>
+                                    <% } %>
                                 </div>
                                 <div class="card__actions">
                                     <a href="/details/<%= product._id %>" class="btn">Details</a>
-                                    <button class="btn" type="button" onclick="addToCart('<%= product._id %>')">Add to Cart</button>
+                                    <% if(product.quantity) { %>
+                                        <button class="btn" type="button" onclick="addToCart('<%= product._id %>')">Add to Cart</button>
+                                    <% } %>
                                 </div>
                             </article>
                             <% } %>

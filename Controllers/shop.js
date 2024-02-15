@@ -4,8 +4,8 @@ const Order = require('../Models/order');
 const path = require('path')
 const fs = require('fs');
 const pdfDocument = require('pdfkit');
-const { start } = require('repl');
 const stripe = require('stripe')('sk_test_51OjEp7ElLr217bS3xeiYK7TkxmP9aDT8zsDZstypvDlo2pfT0mGzp20p35i8ODbATY9zeKzyQaIrTwzDzvLShRbh00yGsCMH1w');
+const endpointSecret = "whsec_a672841fda5a932fdf0c4622e6bb92ac79232dfe1104a39d2d331af53a97cff2";
 
 const MAX_PRODUCTS_PER_PAGE = 10;
 const MAX_PRODUCTS_PER_HOMEPAGE = 3;
@@ -17,6 +17,7 @@ exports.getHome = (req, res, next) => {
         Product.find()
         .skip((currentPage - 1) * MAX_PRODUCTS_PER_HOMEPAGE)
         .limit(MAX_PRODUCTS_PER_HOMEPAGE)
+        .sort({quantity: -1})
         .then(result => {
             res.render('shop/product-list', {
                 title : "Products",
@@ -40,6 +41,7 @@ exports.getAllProducts = (req, res, next) => {
         Product.find()
         .skip((currentPage - 1) * MAX_PRODUCTS_PER_PAGE)
         .limit(MAX_PRODUCTS_PER_PAGE)
+        .sort({quantity: -1})
         .then(result => {
             res.render('shop/product-list', {
                 title : "Products", 
@@ -53,7 +55,7 @@ exports.getAllProducts = (req, res, next) => {
         })
     })
     .catch(err => next(err));
-};
+}
 
 exports.getCart = (req, res, next) => {
     
@@ -70,23 +72,23 @@ exports.getCart = (req, res, next) => {
 exports.addToCart = (req, res, next) => {
     Product.findById(req.params.prodId)
     .then(p => {
-        if(p) {
+        if(p && p.quantity) {
             User.findOneAndUpdate({_id: req.session.user._id, isLocked: false}, {$set: {isLocked: true}}, {new: true}).then(user => {
                 if(user) {
-                    return req.session.user.addItem(p, req.session.user)
-                    .then(() => {
-                        user.isLocked = false;
-                        user.save();
+                    return user.addItem(p)
+                    .then(modUser => {
+                        modUser.isLocked = false;
+                        return modUser.save();
                     })
                     .then(() => res.status(200).json({successful: true}));
                 }
                 else 
-                    res.status(500).json({successful: false});
+                    res.status(500).json({successful: false, message: 'Processing previous request!'});
             })
             .catch(err => console.log(err));
         }
         else {
-            return res.status(500).json({successful: false});
+            return res.status(500).json({successful: false, message:'Product is out of stock.'});
         }
     }).catch(err => next(err));
 }
@@ -179,8 +181,7 @@ exports.getCheckout = (req, res, next) => {
     }).then(session => {
         let err = req.session.err;
         req.session.err = undefined;
-        req.session.save();
-        return res.render('shop/checkout', {
+        res.render('shop/checkout', {
             title: 'Checkout', 
             products: p,
             err: err,
@@ -201,6 +202,30 @@ exports.getOrders = (req, res, next) => {
         auth: (req.session.user? 1: 0), 
         verified: ((req.session.user && req.session.user.verified)? 1 : 0)
     })).catch(err => next(err));;
+}
+
+exports.stripeWebHooks = (req, res) => {
+  const sig = req.headers['stripe-signature'];
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    res.status(400).send(`Webhook Error: ${err.message}`);
+    return;
+  }
+
+  // Handle the event
+  switch (event.type) {
+    case 'payment_intent.succeeded':
+      const paymentIntentSucceeded = event.data.object;
+      // Then define and call a function to handle the event payment_intent.succeeded
+      break;
+  }
+
+  // Return a 200 response to acknowledge receipt of the event
+  res.send();
 }
 
 const generateInvoice = (items, id) => {
@@ -251,4 +276,28 @@ const generateInvoice = (items, id) => {
     invoice.fontSize(14).text(`Total: ${total}$`);
     // Close the PDF
     invoice.end();
+}
+
+const makeOrder = (user) => {
+    let order = new Order();
+    let p = user.cart.items;
+    if(p.length) {
+        order.products = [...p];
+        order.userId = user._id;
+        order.time = new Date();
+        p.forEach(product => {
+            Product.findById(product.product._id)
+            .then(p => {
+                p.quantity -= product.quantity;
+                p.save();
+            });
+        });
+        order.save().then(order => {
+            generateInvoice(user.cart.items, order._id.toString());
+            order.invoice = path.join('Data', 'invoices', `invoice-${order._id}.pdf`);
+            user.clearCart();
+            return order.save();
+        }).then(order => res.redirect('/orders'));
+    }
+    else return res.redirect('/orders');
 }

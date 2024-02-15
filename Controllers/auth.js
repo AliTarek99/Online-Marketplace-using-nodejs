@@ -82,6 +82,7 @@ exports.postRegister = (req, res, next) => {
     user.name = req.body.name;
     user.email = req.body.email;
     user.verified = false;
+    user.isLocked = false;
     bcrypt.hash(req.body.password, 12).then(result => {
         user.password = result;
         user.cart = [];

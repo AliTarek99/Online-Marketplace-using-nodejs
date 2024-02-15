@@ -5,7 +5,7 @@ const addToCart = prodId => {
   })
   .then(data => {
     if(!data.successful) {
-        alert('Processing previous request!');
+        alert(data.message);
     }
   })
   .catch(err => {
@@ -19,6 +19,8 @@ const removeFromCart = (btn, prodId) => {
   const totalObject = document.querySelector('h3#total');
   const total = totalObject.textContent;
   const empty = document.getElementById('empty');
+
+  productElement.hidden = !productElement.hidden;
 
   fetch(`/remove-from-cart/${prodId}`, {
     method: 'PATCH',
@@ -39,8 +41,12 @@ const removeFromCart = (btn, prodId) => {
       productElement.parentNode.removeChild(productElement);
       totalObject.textContent = data.total;
     }
+    else {
+      productElement.hidden = !productElement.hidden;
+    }
   })
   .catch(err => {
+    productElement.hidden = !productElement.hidden;
     console.log(err);
   });
 }

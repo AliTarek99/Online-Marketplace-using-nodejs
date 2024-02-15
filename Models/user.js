@@ -30,7 +30,8 @@ const Users = new Schema({
     },
     isLocked: {
         type: Boolean,
-        deafault: false
+        deafault: false,
+        required: true
     }
 });
 
@@ -54,12 +55,12 @@ Users.methods.removeItem = function(product) {
 
 Users.methods.addItem = function(product) {
     let x = this.cart.items.findIndex(value => value.product._id.toString() == product._id.toString());
-    if(x != -1) {
+    if(x != -1 && product.quantity >= this.cart.items[x].quantity) {
         this.cart.items[x].quantity++;
     }
-    else 
+    else if(product.quantity >= 1)
         this.cart.items.push({product: product, quantity: 1});
-    return this.save().then(function(){ this.mutex = 1; });
+    return this.save();
 }
 
 Users.methods.clearCart = function() {
