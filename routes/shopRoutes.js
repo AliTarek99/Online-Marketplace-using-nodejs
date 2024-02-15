@@ -14,8 +14,6 @@ route.get('/details/:productId', shopController.getDetails);
 
 route.get('/checkout', shopController.getCheckout);
 
-route.get('/checkout/success', shopController.checkoutSuccess);
-
 route.get('/checkout/cancel', shopController.checkoutCancelled);
 
 route.get('/orders', shopController.getOrders);

@@ -117,31 +117,6 @@ exports.checkoutCancelled = (req, res, next) => {
     .catch(err => next(err));
 }
 
-exports.checkoutSuccess = (req, res, next) => {
-    let order = new Order();
-    let user = req.session.user;
-    let p = user.cart.items;
-    if(p.length) {
-        order.products = [...p];
-        order.userId = user._id;
-        order.time = new Date();
-        p.forEach(product => {
-            Product.findById(product.product._id)
-            .then(p => {
-                p.quantity -= product.quantity;
-                p.save();
-            });
-        });
-        order.save().then(order => {
-            generateInvoice(user.cart.items, order._id.toString());
-            order.invoice = path.join('Data', 'invoices', `invoice-${order._id}.pdf`);
-            user.clearCart();
-            return order.save();
-        }).then(order => res.redirect('/orders'));
-    }
-    else return res.redirect('/orders');
-}
-
 exports.getDetails =  (req, res, next) => {
     Product.findById(req.params.productId)
     .then(p => {
@@ -176,8 +151,13 @@ exports.getCheckout = (req, res, next) => {
             }
         }),
         mode: 'payment',
-        success_url: `${req.protocol}://${req.get('host')}/checkout/success`,
-        cancel_url: `${req.protocol}://${req.get('host')}/checkout/cancel`
+        success_url: `${req.protocol}://${req.get('host')}/order`,
+        cancel_url: `${req.protocol}://${req.get('host')}/checkout/cancel`,
+        payment_intent_data: {
+            metadata: {
+                id: req.session.user._id.toString()
+            }
+        }
     }).then(session => {
         let err = req.session.err;
         req.session.err = undefined;
@@ -205,27 +185,29 @@ exports.getOrders = (req, res, next) => {
 }
 
 exports.stripeWebHooks = (req, res) => {
-  const sig = req.headers['stripe-signature'];
+    const sig = req.headers['stripe-signature'];
 
-  let event;
+    let event;
 
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-  } catch (err) {
-    res.status(400).send(`Webhook Error: ${err.message}`);
-    return;
-  }
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } catch (err) {
+        res.status(400).send(`Webhook Error: ${err.message}`);
+        return;
+    }
 
-  // Handle the event
-  switch (event.type) {
-    case 'payment_intent.succeeded':
-      const paymentIntentSucceeded = event.data.object;
-      // Then define and call a function to handle the event payment_intent.succeeded
-      break;
-  }
-
-  // Return a 200 response to acknowledge receipt of the event
-  res.send();
+    // Handle the event
+    switch (event.type) {
+        case 'payment_intent.succeeded':
+            const paymentIntent = event.data.object;
+            User.findById(paymentIntent.metadata.id)
+            .then(user => makeOrder(user))
+            .then(() => res.status(200).send())
+            .catch(err => console.log(err))
+            break;
+        default:
+            res.status(200).send();
+    }
 }
 
 const generateInvoice = (items, id) => {
@@ -292,12 +274,11 @@ const makeOrder = (user) => {
                 p.save();
             });
         });
-        order.save().then(order => {
+        return order.save().then(order => {
             generateInvoice(user.cart.items, order._id.toString());
             order.invoice = path.join('Data', 'invoices', `invoice-${order._id}.pdf`);
             user.clearCart();
             return order.save();
-        }).then(order => res.redirect('/orders'));
+        });
     }
-    else return res.redirect('/orders');
 }
