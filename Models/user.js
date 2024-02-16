@@ -69,7 +69,7 @@ Users.methods.addItem = function(product, msg) {
 }
 
 Users.methods.clearCart = function() {
-    // this.cart = {items: []};
+    this.cart = {items: []};
     return this.save();
 }
 

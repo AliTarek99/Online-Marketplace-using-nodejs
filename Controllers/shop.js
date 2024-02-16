@@ -135,33 +135,52 @@ exports.getDetails =  (req, res, next) => {
 }
 
 exports.getCheckout = (req, res, next) => {
-    let p = req.session.user.cart.items;
+    let p = req.session.user.cart.items.map(value => value = value.product._id);
     let total = 0;
-    stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: p.map(value => {
-            total += value.product.price * 100 * value.quantity;
-            return {
-                price_data: {
-                    currency: 'usd',
-                    unit_amount: value.product.price * 100,
-                    product_data: {
-                        name: value.product.title,
-                        description: value.product.description,
+    Product.find({_id: {$in: p}}).then(products => {
+        p = req.session.user.cart.items;
+        let stock = true;
+        p.forEach((value, index) => {
+            let x = products.findIndex(item => item._id.toString() == value.product._id.toString());
+            if(x == -1)
+                value = null;
+            else {
+                if(value.quantity > products[x].quantity) {
+                    value.quantity = products[x].quantity;
+                    stock &= (products[x].quantity != 0);
+                }
+                value.product.price = products[x].price;
+            }
+        });
+        req.session.user.cart.items = p.filter(value => value != null && value.quantity != 0);
+        return req.session.user.save();
+    }).then(() => {
+        return stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: p.map(value => {
+                total += value.product.price * 100 * value.quantity;
+                return {
+                    price_data: {
+                        currency: 'usd',
+                        unit_amount: value.product.price * 100,
+                        product_data: {
+                            name: value.product.title,
+                            description: value.product.description,
+                        },
                     },
-                },
-                quantity: value.quantity,
+                    quantity: value.quantity,
+                }
+            }),
+            mode: 'payment',
+            success_url: `${req.protocol}://${req.get('host')}/orders`,
+            cancel_url: `${req.protocol}://${req.get('host')}/checkout/cancel`,
+            payment_intent_data: {
+                metadata: {
+                    id: req.session.user._id.toString(),
+                    total: total
+                }
             }
-        }),
-        mode: 'payment',
-        success_url: `${req.protocol}://${req.get('host')}/orders`,
-        cancel_url: `${req.protocol}://${req.get('host')}/checkout/cancel`,
-        payment_intent_data: {
-            metadata: {
-                id: req.session.user._id.toString(),
-                total: total
-            }
-        }
+        })
     }).then(session => {
         User.findByIdAndUpdate(req.session.user._id, {$set: {stripeId: session.id}})
         .then(() => {
@@ -297,10 +316,15 @@ const makeOrder = (u) => {
             return Product.find({_id: {$in: p}})
             .then(products => {
                 let stock = true;
-                products.forEach(value => {
-                    let x = user.cart.items.findIndex(prod => prod.product._id.toString() == value._id.toString());
-                    if(value.quantity < user.cart.items[x].quantity) {
-                        user.cart.items[x].quantity = value.quantity;
+                let tmp = [];
+                user.cart.items.forEach((value, index) => {
+                    let x = products.findIndex(prod => prod._id.toString() == value.product._id.toString());
+                    if(x == -1) {
+                        value = null;
+                        stock = false;
+                    }
+                    else if(value.quantity > products[x].quantity) {
+                        value.quantity = products[x].quantity;
                         stock = false;
                     }
                 });
@@ -324,7 +348,7 @@ const makeOrder = (u) => {
                     });
                 }
                 else {
-                    user.cart.items = user.cart.items.filter(value => value.quantity > 0);
+                    user.cart.items = user.cart.items.filter(value => value != null && value.quantity != 0);
                 }
                 user.isLocked = false;
                 return user.save().then(() => false);
