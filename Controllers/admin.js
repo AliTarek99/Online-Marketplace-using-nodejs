@@ -77,7 +77,7 @@ exports.postEdit = (req, res, next) => {
         if(!p && !req.file)
             error.push({msg: 'Invalid file type!'});
         if(error.length) {
-            return res.render('admin/add-product', {
+            res.render('admin/add-product', {
                 title: 'Edit Product', 
                 path: `/admin/add-product/${(p? p._id.toString(): '')}`, 
                 err: error,
@@ -92,6 +92,7 @@ exports.postEdit = (req, res, next) => {
                 verified: ((req.session.user && req.session.user.verified)? 1 : 0),
                 invalidFile: (error.find(value => value == 'image')? true: false)
             });
+            return false;
         }
         if(!p) p = new Product();
         const image = req.file;
@@ -104,6 +105,9 @@ exports.postEdit = (req, res, next) => {
         p.userId = req.session.user._id;
         return p.save();
     })
-    .then(() => res.redirect('/admin/products'))
+    .then(result => {
+        if(result !== false) 
+            res.redirect('/admin/products')
+    })
     .catch(err => next(err));
 }

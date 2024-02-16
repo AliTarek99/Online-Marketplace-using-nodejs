@@ -140,7 +140,7 @@ exports.getCheckout = (req, res, next) => {
     Product.find({_id: {$in: p}}).then(products => {
         p = req.session.user.cart.items;
         let stock = true;
-        p.forEach((value, index) => {
+        req.session.user.cart.items.forEach((value, index) => {
             let x = products.findIndex(item => item._id.toString() == value.product._id.toString());
             if(x == -1)
                 value = null;
@@ -152,7 +152,7 @@ exports.getCheckout = (req, res, next) => {
                 value.product.price = products[x].price;
             }
         });
-        req.session.user.cart.items = p.filter(value => value != null && value.quantity != 0);
+        req.session.user.cart.items = req.session.user.cart.items.filter(value => value != null && value.quantity != 0);
         return req.session.user.save();
     }).then(() => {
         return stripe.checkout.sessions.create({
@@ -316,7 +316,6 @@ const makeOrder = (u) => {
             return Product.find({_id: {$in: p}})
             .then(products => {
                 let stock = true;
-                let tmp = [];
                 user.cart.items.forEach((value, index) => {
                     let x = products.findIndex(prod => prod._id.toString() == value.product._id.toString());
                     if(x == -1) {
