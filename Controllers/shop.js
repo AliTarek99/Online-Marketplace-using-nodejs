@@ -134,7 +134,7 @@ exports.getDetails =  (req, res, next) => {
     }).catch(err => next(err));
 }
 
-exports.getCheckout = (req, res, next) => {
+exports.checkout = (req, res, next) => {
     let p = req.session.user.cart.items.map(value => value = value.product._id);
     let total = 0;
     Product.find({_id: {$in: p}}).then(products => {
@@ -142,12 +142,15 @@ exports.getCheckout = (req, res, next) => {
         let stock = true;
         req.session.user.cart.items.forEach((value, index) => {
             let x = products.findIndex(item => item._id.toString() == value.product._id.toString());
-            if(x == -1)
+            if(x == -1) {
+                req.session.err = 'Some products in the cart may have been removed or changed due to stock or product change. Refresh page to see changes.';
                 value = null;
+            }
             else {
                 if(value.quantity > products[x].quantity) {
                     value.quantity = products[x].quantity;
                     stock &= (products[x].quantity != 0);
+                    req.session.err = 'Some products in the cart may have been removed or changed due to stock or product change. Refresh page to see changes.';
                 }
                 value.product.price = products[x].price;
             }
@@ -157,6 +160,12 @@ exports.getCheckout = (req, res, next) => {
     }).then(() => {
         return stripe.checkout.sessions.create({
             payment_method_types: ['card'],
+            shipping_address_collection: {
+                allowed_countries: ['EG'],
+            },
+            phone_number_collection: {
+                enabled: true
+            },
             line_items: p.map(value => {
                 total += value.product.price * 100 * value.quantity;
                 return {
@@ -174,11 +183,9 @@ exports.getCheckout = (req, res, next) => {
             mode: 'payment',
             success_url: `${req.protocol}://${req.get('host')}/orders`,
             cancel_url: `${req.protocol}://${req.get('host')}/checkout/cancel`,
-            payment_intent_data: {
-                metadata: {
-                    id: req.session.user._id.toString(),
-                    total: total
-                }
+            metadata: {
+                id: req.session.user._id.toString(),
+                total: total
             }
         })
     }).then(session => {
@@ -186,15 +193,7 @@ exports.getCheckout = (req, res, next) => {
         .then(() => {
             let err = req.session.err;
             req.session.err = undefined;
-            res.render('shop/checkout', {
-                title: 'Checkout', 
-                products: p,
-                err: err,
-                sessionId: session.id,
-                path: '/checkout', 
-                auth: (req.session.user? 1: 0),
-                verified: ((req.session.user && req.session.user.verified)? 1 : 0)
-            })
+            return res.status(200).json({sessionId: session.id, err: err});
         });
         
     }).catch(err => next(err));
@@ -225,19 +224,19 @@ exports.stripeWebHooks = (req, res) => {
 
     // Handle the event
     switch (event.type) {
-        case 'payment_intent.created':
+        case 'checkout.session.completed':
             let u;
             const paymentIntent = event.data.object;
             User.findById(paymentIntent.metadata.id)
             .then(user => {
                 u = user;
-                return makeOrder(user);
+                return makeOrder(user, paymentIntent.shipping_details, paymentIntent.customer_details);
             })
             .then(result => {
                 if(result)
                     res.status(200).send();
                 else {
-                    stripe.refunds.create({
+                    return stripe.refunds.create({
                         payment_intent: paymentIntent.id,
                         amount: paymentIntent.metadata.total
                     });
@@ -256,23 +255,30 @@ exports.stripeWebHooks = (req, res) => {
     }
 }
 
-const generateInvoice = (items, id) => {
+const generateInvoice = (user, order) => {
+    let items = user.cart.items;
     let invoice = new pdfDocument({font: 'Times-Italic'});
-    let invoicePath = path.join('Data', 'invoices', `invoice-${id}.pdf`);
+    let invoicePath = path.join('Data', 'invoices', `invoice-${order._id}.pdf`);
     let fileStream = fs.createWriteStream(invoicePath);
 
     // Pipe the PDF to the file stream to save it to a file
     invoice.pipe(fileStream);
-
+    invoice.font('Helvetica');
     // Set up content for the PDF
     invoice.fontSize(20).text('Invoice\n---------------------------------------');
     let total = 0;
-
+    invoice.fontSize(20).text('Customer Info');
+    invoice.fontSize(12).text(`Name: ${user.name}`);
+    invoice.fontSize(12).text('City: ', {continued: true}).font('Data\\arabicFont.ttf').text(order.city);
+    invoice.font('Helvetica');
+    invoice.fontSize(12).text(`Address: ${order.address}`);
+    invoice.fontSize(12).text(`Phone: ${order.phoneNumber}`);
+    invoice.fontSize(20).text('---------------------------------------\nProducts');
     const table = {
         headers: ['Name', 'Quantity', 'Price'],
         rows: [],
         columnSpacing: 15,
-        yStart: 120,
+        yStart: 270,
         cellPadding: 5,
         fontSize: 12
     };
@@ -306,7 +312,7 @@ const generateInvoice = (items, id) => {
     invoice.end();
 }
 
-const makeOrder = (u) => {
+const makeOrder = (u, shippingInfo, customerInfo) => {
     let order = new Order();
     if(u.cart.items.length) {
         return User.findOneAndUpdate({_id: u._id, isLocked: false}, {$set: {isLocked: true}}, {new: true})
@@ -328,6 +334,9 @@ const makeOrder = (u) => {
                     }
                 });
                 if(stock) {
+                    order.address = shippingInfo.address.line1 + (shippingInfo.address.line2? ` ${shippingInfo.address.line2}`: "");
+                    order.city = shippingInfo.address.state;
+                    order.phoneNumber = customerInfo.phone;
                     order.products = [...(user.cart.items)];
                     order.userId = user._id;
                     order.time = new Date();
@@ -340,10 +349,11 @@ const makeOrder = (u) => {
                     });
                     return order.save()
                     .then(order => {
-                        generateInvoice(user.cart.items, order._id.toString());
                         order.invoice = path.join('Data', 'invoices', `invoice-${order._id}.pdf`);
+                        order.save();
+                        generateInvoice(user, order);
                         user.isLocked = false;
-                        return user.clearCart().then(() => order.save()).then(() => true);
+                        return user.clearCart().then(() => true);
                     });
                 }
                 else {

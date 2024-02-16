@@ -11,7 +11,19 @@ const Orders = new Schema({
         required: true
     },
     invoice: {
-        type: String
+        type: String,
+    },
+    city: {
+        type: String,
+        required: true
+    },
+    address: {
+        type: String,
+        required: true
+    },
+    phoneNumber: {
+        type: String,
+        required: true
     }
 });
 

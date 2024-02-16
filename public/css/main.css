@@ -218,10 +218,20 @@ form {
   cursor: pointer;
 }
 
-.btn:hover,
-.btn:active {
+.btn:hover:not([disabled]),
+.btn:active:not([disabled]) {
   background-color: #00695c;
   color: white;
+}
+
+.btn:disabled:hover {
+  background-color: transparent;
+  color: #00695c;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn.danger {

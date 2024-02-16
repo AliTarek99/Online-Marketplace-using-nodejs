@@ -12,7 +12,7 @@ route.get('/cart', shopController.getCart);
 
 route.get('/details/:productId', shopController.getDetails);
 
-route.get('/checkout', shopController.getCheckout);
+route.get('/checkout', shopController.checkout);
 
 route.get('/checkout/cancel', shopController.checkoutCancelled);
 
