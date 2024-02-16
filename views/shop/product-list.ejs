@@ -4,43 +4,43 @@
 
     <body>
         <%- include('../includes/navigation.ejs') %>
-            <main>
-                <% if (prods.length > 0) { %>
-                    <div class="grid">
-                        <% for (let product of prods) { %>
-                            <article class="card product-item">
-                                <div class="card__image">
-                                    <img src="/<%= product.imgUrl %>" alt="<%= product.title %>">
-                                </div>
-                                <header class="card__header">
-                                    <h1 class="product__title">
-                                        <%= product.title %>
-                                    </h1>
-                                </header>
-                                <div class="card__content">
-                                    <% if(product.quantity) { %>
-                                        <h2 class="product__price">$
-                                            <%= product.price %>
-                                        </h2>
-                                    <% } else { %>
-                                        <h2 class="out-of-stock">
-                                            Out of stock
-                                        </h2>
-                                    <% } %>
-                                </div>
-                                <div class="card__actions">
-                                    <a href="/details/<%= product._id %>" class="btn">Details</a>
-                                    <% if(product.quantity) { %>
-                                        <button class="btn" type="button" onclick="addToCart('<%= product._id %>')">Add to Cart</button>
-                                    <% } %>
-                                </div>
-                            </article>
-                            <% } %>
-                    </div>
-                    <% } else { %>
-                        <h1>No Products Found!</h1>
+        <main>
+            <% if (prods.length > 0) { %>
+                <div class="grid">
+                    <% for (let product of prods) { %>
+                        <article class="card product-item">
+                            <div class="card__image">
+                                <img src="/<%= product.imgUrl %>" alt="<%= product.title %>">
+                            </div>
+                            <header class="card__header">
+                                <h1 class="product__title">
+                                    <%= product.title %>
+                                </h1>
+                            </header>
+                            <div class="card__content">
+                                <% if(product.quantity) { %>
+                                    <h2 class="product__price">$
+                                        <%= product.price %>
+                                    </h2>
+                                <% } else { %>
+                                    <h2 class="out-of-stock">
+                                        Out of stock
+                                    </h2>
+                                <% } %>
+                            </div>
+                            <div class="card__actions">
+                                <a href="/details/<%= product._id %>" class="btn">Details</a>
+                                <% if(product.quantity) { %>
+                                    <button class="btn" type="button" onclick="addToCart('<%= product._id %>')">Add to Cart</button>
+                                <% } %>
+                            </div>
+                        </article>
                         <% } %>
-            </main>
-            <%- include('../includes/pagination.ejs') %>
-            <%- include('../includes/end.ejs') %>
-            <script src="/js/shop.js"></script>
+                </div>
+                <% } else { %>
+                    <h1>No Products Found!</h1>
+                    <% } %>
+        </main>
+        <%- include('../includes/pagination.ejs') %>
+        <%- include('../includes/end.ejs') %>
+        <script src="/js/shop.js"></script>

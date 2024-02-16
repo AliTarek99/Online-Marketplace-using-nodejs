@@ -32,6 +32,9 @@ const Users = new Schema({
         type: Boolean,
         deafault: false,
         required: true
+    },
+    stripeId: {
+        type: String
     }
 });
 
@@ -53,18 +56,20 @@ Users.methods.removeItem = function(product) {
     });
 }
 
-Users.methods.addItem = function(product) {
+Users.methods.addItem = function(product, msg) {
     let x = this.cart.items.findIndex(value => value.product._id.toString() == product._id.toString());
-    if(x != -1 && product.quantity >= this.cart.items[x].quantity) {
+    if(x != -1 && product.quantity >= this.cart.items[x].quantity + 1) {
         this.cart.items[x].quantity++;
     }
-    else if(product.quantity >= 1)
+    else if(x == -1 && product.quantity >= 1)
         this.cart.items.push({product: product, quantity: 1});
+    else
+        msg.err = 'Not enough in stock!';
     return this.save();
 }
 
 Users.methods.clearCart = function() {
-    this.cart = {items: []};
+    // this.cart = {items: []};
     return this.save();
 }
 

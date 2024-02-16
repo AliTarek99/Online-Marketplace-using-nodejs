@@ -7,6 +7,9 @@ const addToCart = prodId => {
     if(!data.successful) {
         alert(data.message);
     }
+    else {
+      alert('Added successfully!')
+    }
   })
   .catch(err => {
     console.log(err);

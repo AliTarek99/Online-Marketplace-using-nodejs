@@ -24,12 +24,8 @@ exports.getLogin = (req, res, next) => {
 exports.postLogin = (req, res, next) => {
     User.findOne({email: req.body.email})
     .then(user => {
-        bcrypt.compare(req.body.password, user.password).then(result => {
-            if(user && result) {
-                req.session.user = user;
-                return req.session.save(() => res.redirect('/'));
-            }
-            return req.session.save(() => res.render('auth/login', {
+        if(!user) {
+            res.render('auth/login', {
                 title: 'Login', 
                 path: '/login', 
                 err: 'Wrong credentials.', 
@@ -38,7 +34,23 @@ exports.postLogin = (req, res, next) => {
                 oldData: {
                     email: req.body.email
                 }
-            }));
+            });
+        }
+        bcrypt.compare(req.body.password, user.password).then(result => {
+            if(user && result) {
+                req.session.user = user;
+                return req.session.save(() => res.redirect('/'));
+            }
+            return res.render('auth/login', {
+                title: 'Login', 
+                path: '/login', 
+                err: 'Wrong credentials.', 
+                auth: (req.session.user? 1: 0), 
+                verified: ((req.session.user && req.session.user.verified)? 1 : 0),
+                oldData: {
+                    email: req.body.email
+                }
+            });
         });
     })
     .catch(err => next(err));
@@ -83,6 +95,7 @@ exports.postRegister = (req, res, next) => {
     user.email = req.body.email;
     user.verified = false;
     user.isLocked = false;
+    user.stripeId = "";
     bcrypt.hash(req.body.password, 12).then(result => {
         user.password = result;
         user.cart = [];

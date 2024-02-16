@@ -57,11 +57,11 @@ exports.getEdit = (req, res, next) => {
     .then(product => {
         if(!product || !req.session.user || product.userId.toString() != req.session.user._id.toString()) return res.redirect('/admin/products');
         return res.render('admin/add-product', {
-            title: 'Edit Product', 
-            path: '/admin/add-product', 
+            title: 'Edit Product',
+            path: '/admin/add-product',
             err: [],
-            product: p, 
-            auth: (req.session.user? 1: 0), 
+            product: product,
+            auth: (req.session.user? 1: 0),
             verified: ((req.session.user && req.session.user.verified)? 1 : 0),
             invalidFile: false
         });
@@ -73,13 +73,16 @@ exports.postEdit = (req, res, next) => {
     Product.findById(req.params.prodId)
     .then(p => {
         if(!req.session.user || (p && p.userId.toString() != req.session.user._id.toString())) return res.redirect('/admin/products');
-        const error = validationResult(req);
-        if(!error.isEmpty()) {
+        const error = validationResult(req).array();
+        if(!p && !req.file)
+            error.push({msg: 'Invalid file type!'});
+        if(error.length) {
             return res.render('admin/add-product', {
                 title: 'Edit Product', 
-                path: '/admin/add-product', 
-                err: error.array(),
+                path: `/admin/add-product/${(p? p._id.toString(): '')}`, 
+                err: error,
                 product: {
+                    _id: (p? p._id.toString(): ''),
                     title: req.body.title,
                     price: req.body.price,
                     quantity: req.body.quantity,
@@ -87,7 +90,7 @@ exports.postEdit = (req, res, next) => {
                 }, 
                 auth: (req.session.user? 1: 0), 
                 verified: ((req.session.user && req.session.user.verified)? 1 : 0),
-                invalidFile: (error.array().find(value => value == 'image')? true: false)
+                invalidFile: (error.find(value => value == 'image')? true: false)
             });
         }
         if(!p) p = new Product();
@@ -96,7 +99,8 @@ exports.postEdit = (req, res, next) => {
         p.price = req.body.price;
         p.quantity = req.body.quantity;
         p.description = req.body.description;
-        p.imgUrl = image.path;
+        if(image)
+            p.imgUrl = image.path;
         p.userId = req.session.user._id;
         return p.save();
     })

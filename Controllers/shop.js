@@ -4,6 +4,7 @@ const Order = require('../Models/order');
 const path = require('path')
 const fs = require('fs');
 const pdfDocument = require('pdfkit');
+const user = require('../Models/user');
 const stripe = require('stripe')('sk_test_51OjEp7ElLr217bS3xeiYK7TkxmP9aDT8zsDZstypvDlo2pfT0mGzp20p35i8ODbATY9zeKzyQaIrTwzDzvLShRbh00yGsCMH1w');
 const endpointSecret = "whsec_a672841fda5a932fdf0c4622e6bb92ac79232dfe1104a39d2d331af53a97cff2";
 
@@ -58,11 +59,12 @@ exports.getAllProducts = (req, res, next) => {
 }
 
 exports.getCart = (req, res, next) => {
-    
+    let err = req.session.err;
+    req.session.err = undefined;
     res.render('shop/cart', {
         title : "Cart",
         prods : req.session.user.cart.items, 
-        err: null,
+        err: err,
         path : '/cart', 
         auth: (req.session.user? 1: 0), 
         verified: ((req.session.user && req.session.user.verified)? 1 : 0)
@@ -75,12 +77,13 @@ exports.addToCart = (req, res, next) => {
         if(p && p.quantity) {
             User.findOneAndUpdate({_id: req.session.user._id, isLocked: false}, {$set: {isLocked: true}}, {new: true}).then(user => {
                 if(user) {
-                    return user.addItem(p)
+                    let msg = { err: "" };
+                    return user.addItem(p, msg)
                     .then(modUser => {
                         modUser.isLocked = false;
                         return modUser.save();
                     })
-                    .then(() => res.status(200).json({successful: true}));
+                    .then(() => res.status(200).json({successful: (msg.err? false: true), message: msg.err}));
                 }
                 else 
                     res.status(500).json({successful: false, message: 'Processing previous request!'});
@@ -112,9 +115,7 @@ exports.removeFromCart = (req, res, next) => {
 
 exports.checkoutCancelled = (req, res, next) => {
     req.session.err = 'Something went wrong!';
-    req.session.save()
-    .then(() => res.redirect('/checkout'))
-    .catch(err => next(err));
+    res.redirect('/cart')
 }
 
 exports.getDetails =  (req, res, next) => {
@@ -135,9 +136,11 @@ exports.getDetails =  (req, res, next) => {
 
 exports.getCheckout = (req, res, next) => {
     let p = req.session.user.cart.items;
+    let total = 0;
     stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: p.map(value => {
+            total += value.product.price * 100 * value.quantity;
             return {
                 price_data: {
                     currency: 'usd',
@@ -151,25 +154,30 @@ exports.getCheckout = (req, res, next) => {
             }
         }),
         mode: 'payment',
-        success_url: `${req.protocol}://${req.get('host')}/order`,
+        success_url: `${req.protocol}://${req.get('host')}/orders`,
         cancel_url: `${req.protocol}://${req.get('host')}/checkout/cancel`,
         payment_intent_data: {
             metadata: {
-                id: req.session.user._id.toString()
+                id: req.session.user._id.toString(),
+                total: total
             }
         }
     }).then(session => {
-        let err = req.session.err;
-        req.session.err = undefined;
-        res.render('shop/checkout', {
-            title: 'Checkout', 
-            products: p,
-            err: err,
-            sessionId: session.id,
-            path: '/checkout', 
-            auth: (req.session.user? 1: 0), 
-            verified: ((req.session.user && req.session.user.verified)? 1 : 0)
-        })
+        User.findByIdAndUpdate(req.session.user._id, {$set: {stripeId: session.id}})
+        .then(() => {
+            let err = req.session.err;
+            req.session.err = undefined;
+            res.render('shop/checkout', {
+                title: 'Checkout', 
+                products: p,
+                err: err,
+                sessionId: session.id,
+                path: '/checkout', 
+                auth: (req.session.user? 1: 0),
+                verified: ((req.session.user && req.session.user.verified)? 1 : 0)
+            })
+        });
+        
     }).catch(err => next(err));
 }
 
@@ -198,12 +206,31 @@ exports.stripeWebHooks = (req, res) => {
 
     // Handle the event
     switch (event.type) {
-        case 'payment_intent.succeeded':
+        case 'payment_intent.created':
+            let u;
             const paymentIntent = event.data.object;
             User.findById(paymentIntent.metadata.id)
-            .then(user => makeOrder(user))
+            .then(user => {
+                u = user;
+                return makeOrder(user);
+            })
+            .then(result => {
+                if(result)
+                    res.status(200).send();
+                else {
+                    stripe.refunds.create({
+                        payment_intent: paymentIntent.id,
+                        amount: paymentIntent.metadata.total
+                    });
+                }
+            })
+            .catch(err => console.log(err));
+            break;
+        case 'payment_intent.canceled':
+            paymentIntent = event.data.object;
+            Order.findOneAndDelete({userId: paymentIntent.metadata.id}, {sort: { time: -1 }})
             .then(() => res.status(200).send())
-            .catch(err => console.log(err))
+            .catch(err => console.log(err));
             break;
         default:
             res.status(200).send();
@@ -260,25 +287,50 @@ const generateInvoice = (items, id) => {
     invoice.end();
 }
 
-const makeOrder = (user) => {
+const makeOrder = (u) => {
     let order = new Order();
-    let p = user.cart.items;
-    if(p.length) {
-        order.products = [...p];
-        order.userId = user._id;
-        order.time = new Date();
-        p.forEach(product => {
-            Product.findById(product.product._id)
-            .then(p => {
-                p.quantity -= product.quantity;
-                p.save();
-            });
-        });
-        return order.save().then(order => {
-            generateInvoice(user.cart.items, order._id.toString());
-            order.invoice = path.join('Data', 'invoices', `invoice-${order._id}.pdf`);
-            user.clearCart();
-            return order.save();
-        });
+    if(u.cart.items.length) {
+        return User.findOneAndUpdate({_id: u._id, isLocked: false}, {$set: {isLocked: true}}, {new: true})
+        .then(user => {
+            if(!user) return false;
+            let p = user.cart.items.map(value => value = value.product._id);
+            return Product.find({_id: {$in: p}})
+            .then(products => {
+                let stock = true;
+                products.forEach(value => {
+                    let x = user.cart.items.findIndex(prod => prod.product._id.toString() == value._id.toString());
+                    if(value.quantity < user.cart.items[x].quantity) {
+                        user.cart.items[x].quantity = value.quantity;
+                        stock = false;
+                    }
+                });
+                if(stock) {
+                    order.products = [...(user.cart.items)];
+                    order.userId = user._id;
+                    order.time = new Date();
+                    user.cart.items.forEach(product => {
+                        Product.findById(product.product._id)
+                        .then(p => {
+                            p.quantity -= product.quantity;
+                            p.save();
+                        });
+                    });
+                    return order.save()
+                    .then(order => {
+                        generateInvoice(user.cart.items, order._id.toString());
+                        order.invoice = path.join('Data', 'invoices', `invoice-${order._id}.pdf`);
+                        user.isLocked = false;
+                        return user.clearCart().then(() => order.save()).then(() => true);
+                    });
+                }
+                else {
+                    user.cart.items = user.cart.items.filter(value => value.quantity > 0);
+                }
+                user.isLocked = false;
+                return user.save().then(() => false);
+            })
+        }).catch(err => console.log(err));
+        
     }
+    else return false;
 }
