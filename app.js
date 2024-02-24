@@ -39,7 +39,7 @@ const upload = multer({
 
 restrictedRoutes = ['/admin/add-product', '/cart', '/order', '/admin/admin-products', '/add-to-cart', '/remove-from-cart', '/logout', '/admin/delete-product', '/admin/edit-product'];
 
-const dbURL = 'mongodb+srv://alitarek:0000@cluster0.yt1qvle.mongodb.net/test?retryWrites=true&w=majority';
+const dbURL = "Your collection's link";
 
 const store = new sessionMongo({
     uri: dbURL,
